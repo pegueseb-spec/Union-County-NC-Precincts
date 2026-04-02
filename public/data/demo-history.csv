@@ -1,0 +1,7 @@
+county_desc,precinct_abbrv,race_code,party_cd,sex_code,election_date,total_voters
+UNION,007,W,REP,M,2024-11-05,295
+UNION,007,B,DEM,F,2024-11-05,152
+UNION,008,W,UNA,F,2024-11-05,240
+UNION,008,B,DEM,M,2024-11-05,103
+UNION,002,W,REP,F,2024-11-05,286
+UNION,002,B,UNA,M,2024-11-05,84

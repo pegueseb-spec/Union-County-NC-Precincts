@@ -1,0 +1,5 @@
+county_desc,year,precinct_abbrv,cvap_total
+UNION,2024,001,1523
+UNION,2024,002,1389
+UNION,2024,007,1744
+UNION,2024,008,1611

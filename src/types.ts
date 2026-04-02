@@ -48,6 +48,11 @@ export interface PrecinctStats {
   turnoutByParty: Record<string, number>;
   turnoutByGender: Record<string, number>;
 
+  // CVAP
+  cvapTotal: number;
+  registrationShareOfCvap: number;
+  ballotShareOfCvap: number;
+
   // Density
   densityByRace: Record<string, number>;
 }

@@ -2,19 +2,80 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Union County Voter Intelligence Dashboard
 
-This contains everything you need to run your app locally.
+This project is a Vite + React dashboard for analyzing Union County, NC voter registration, turnout history, and precinct-level patterns from NCSBE source files.
 
-View your app in AI Studio: https://ai.studio/apps/b91e539f-65f6-4d30-9dfc-75a851241b74
+## What It Does
+
+- Uploads voter registration and election history data exports
+- Filters records to Union County precincts
+- Computes registration, ballot, turnout, and density summaries
+- Displays precinct-level stats and a choropleth map
+- Exports the filtered dashboard view as CSV
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+Prerequisites: Node.js 20+
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Start the development server:
    `npm run dev`
+3. Open the local URL shown by Vite
+
+## Quality Checks
+
+1. Run TypeScript validation:
+   `npm run lint`
+2. Run the smoke tests:
+   `npm run test:run`
+3. Build the production bundle:
+   `npm run build`
+
+## Deployment
+
+This repo now includes a GitHub Pages workflow at `.github/workflows/deploy.yml`.
+
+To enable deployment:
+
+1. Push the repository to GitHub.
+2. In GitHub, open Settings > Pages.
+3. Set the source to `GitHub Actions`.
+4. Push to `main` or run the workflow manually.
+
+The Vite base path is configured to use relative asset URLs, so the app can be hosted from a repository subpath without changing code.
+
+## Release Checklist
+
+The share-readiness checklist is documented in `RELEASE.md`.
+
+## Data Inputs
+
+- Voter registration: aggregated NCSBE voter stats export
+- Election history: aggregated NCSBE history stats export
+- CVAP: precinct-level CVAP file with precinct and total CVAP columns; year is optional
+
+Upload diagnostics:
+- CVAP upload summary includes parsed, usable, dropped, and matched-to-analysis row counts
+- If rows are dropped or unmatched, use the in-app `Export CVAP Issue Rows CSV` button
+
+Accepted CVAP columns (aliases supported):
+- Precinct: precinct_abbrv, precinct, precinct_name, precinct_code, precinct_id
+- Year (optional): year, election_year, cvap_year, analysis_year
+- CVAP total: cvap_total, cvap, total_cvap, citizen_voting_age_population
+- County (optional): county_desc, county, county_name, county_nam
+
+Template file:
+- public/data/cvap-template.csv
+
+Demo files:
+- public/data/demo-voter.csv
+- public/data/demo-history.csv
+- public/data/demo-cvap.csv
+- Use the `Load Demo Dataset` button on the upload screen to populate all three at once
+
+## Notes
+
+- The precinct map is now served from the vendored local GeoJSON asset at `public/data/union-county-precincts.geojson`.
+- Production builds on locked-down Windows environments may fail if Rollup native binaries are blocked by local application control policy.

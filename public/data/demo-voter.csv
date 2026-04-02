@@ -1,0 +1,7 @@
+county_desc,precinct_abbrv,race_code,party_cd,sex_code,total_voters
+UNION,007,W,REP,M,420
+UNION,007,B,DEM,F,210
+UNION,008,W,UNA,F,355
+UNION,008,B,DEM,M,175
+UNION,002,W,REP,F,390
+UNION,002,B,UNA,M,160

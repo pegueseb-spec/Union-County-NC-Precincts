@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { motion } from 'motion/react';
 import { PrecinctStats } from '../types';
 import { cn } from '../lib/utils';
 
@@ -18,31 +19,22 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch NC Precincts GeoJSON
     const fetchGeoData = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('https://raw.githubusercontent.com/opendata-nc/nc-precincts/master/nc_precincts.geojson');
+        const response = await fetch(`${import.meta.env.BASE_URL}data/union-county-precincts.geojson`);
         if (!response.ok) throw new Error('Failed to fetch GeoJSON');
         const data = await response.json();
-        
-        // Filter for Union County (FIPS 179)
-        const unionPrecincts = {
-          ...data,
-          features: data.features.filter((f: any) => 
-            f.properties.COUNTY_NAM === 'UNION' || f.properties.COUNTY_FIP === '179'
-          )
-        };
-        
-        if (unionPrecincts.features.length === 0) {
+
+        if (!data.features || data.features.length === 0) {
           throw new Error('No precincts found for Union County in GeoJSON');
         }
-        
-        setGeoData(unionPrecincts);
+
+        setGeoData(data);
         setIsLoading(false);
       } catch (err) {
         console.error('Error loading map data:', err);
-        setError('Could not load map boundaries. Please ensure you have an internet connection.');
+        setError('Could not load the local Union County precinct map data.');
         setIsLoading(false);
       }
     };
@@ -79,12 +71,11 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       .attr('class', 'precinct-path cursor-pointer transition-all duration-200')
       .attr('stroke', '#fff')
       .attr('stroke-width', (d: any) => {
-        const precinctName = d.properties.PREC_NAME || d.properties.PRECINCT;
+        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
         return precinctName === selectedPrecinct ? 3 : 0.5;
       })
       .attr('fill', (d: any) => {
-        const precinctName = d.properties.PREC_NAME || d.properties.PRECINCT;
-        // Try to match precinct name
+        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
         const precinctStats = stats.find(s => 
           s.precinct === precinctName || 
           s.precinct.replace(/^0+/, '') === precinctName.replace(/^0+/, '')
@@ -92,7 +83,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         return precinctStats ? colorScale(precinctStats.turnoutOverall) : '#f3f4f6';
       })
       .on('mouseover', (event, d: any) => {
-        const precinctName = d.properties.PREC_NAME || d.properties.PRECINCT;
+        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
         const precinctStats = stats.find(s => 
           s.precinct === precinctName || 
           s.precinct.replace(/^0+/, '') === precinctName.replace(/^0+/, '')
@@ -110,14 +101,14 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         setTooltipPos({ x: event.pageX, y: event.pageY });
       })
       .on('mouseout', (event, d: any) => {
-        const precinctName = d.properties.PREC_NAME || d.properties.PRECINCT;
+        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
         d3.select(event.currentTarget)
           .attr('stroke', precinctName === selectedPrecinct ? '#3b82f6' : '#fff')
           .attr('stroke-width', precinctName === selectedPrecinct ? 3 : 0.5);
         setHoveredInfo(null);
       })
       .on('click', (event, d: any) => {
-        const precinctName = d.properties.PREC_NAME || d.properties.PRECINCT;
+        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
         onPrecinctSelect(precinctName);
       });
 
@@ -174,12 +165,11 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       />
 
       {hoveredInfo && (
-        <div 
-          className="fixed z-50 bg-white p-4 rounded-xl shadow-2xl border border-gray-100 pointer-events-none min-w-[220px]"
-          style={{ 
-            left: tooltipPos.x + 15, 
-            top: tooltipPos.y + 15 
-          }}
+        <motion.div
+          initial={false}
+          animate={{ x: tooltipPos.x + 15, y: tooltipPos.y + 15 }}
+          transition={{ type: 'tween', duration: 0.08 }}
+          className="fixed top-0 left-0 z-50 bg-white p-4 rounded-xl shadow-2xl border border-gray-100 pointer-events-none min-w-[220px]"
         >
           <div className="space-y-3">
             <div>
@@ -202,6 +192,14 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
                     <p className="text-[10px] font-bold text-gray-400 uppercase">Ballots Cast</p>
                     <p className="text-sm font-bold text-gray-700">{hoveredInfo.stats.totalBallots.toLocaleString()}</p>
                   </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">CVAP</p>
+                    <p className="text-sm font-bold text-gray-700">{hoveredInfo.stats.cvapTotal > 0 ? hoveredInfo.stats.cvapTotal.toLocaleString() : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Reg / CVAP</p>
+                    <p className="text-sm font-bold text-gray-700">{hoveredInfo.stats.cvapTotal > 0 ? `${hoveredInfo.stats.registrationShareOfCvap.toFixed(1)}%` : 'N/A'}</p>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -220,7 +218,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
               </>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

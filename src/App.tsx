@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
+import Papa, { ParseError, ParseResult } from 'papaparse';
 import { 
   BarChart3, 
   FileUp, 
@@ -20,8 +19,17 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { PrecinctStats } from './types';
-import { ChoroplethMap } from './components/ChoroplethMap';
+import { CVAPRecord, HistoryRecord, PrecinctStats, VoterRecord } from './types';
+
+const ChoroplethMap = lazy(async () => {
+  const module = await import('./components/ChoroplethMap');
+  return { default: module.ChoroplethMap };
+});
+
+const HowToPanel = lazy(async () => {
+  const module = await import('./components/HowToPanel');
+  return { default: module.HowToPanel };
+});
 
 // --- Constants ---
 const UNION_COUNTY = "UNION";
@@ -29,6 +37,164 @@ const YEARS = [2020, 2021, 2022, 2023, 2024, 2025];
 const RACE_CODES = ['W', 'B', 'A', 'I', 'M', 'O', 'P', 'U'];
 const PARTY_CODES = ['REP', 'DEM', 'UNA', 'LIB', 'GRE', 'CST', 'NLB'];
 const GENDER_CODES = ['M', 'F', 'U'];
+const YEARLESS_CVAP = 0;
+const CVAP_PRECINCT_KEYS = ['precinct_abbrv', 'precinct', 'precinct_name', 'precinct_code', 'precinctid', 'precinct_id', 'precinctabbrv'];
+const CVAP_YEAR_KEYS = ['year', 'election_year', 'cvap_year', 'analysis_year'];
+const CVAP_TOTAL_KEYS = ['cvap_total', 'cvap', 'citizen_voting_age_population', 'citizen voting age population', 'total_cvap'];
+const COUNTY_KEYS = ['county_desc', 'county', 'county_name', 'county_nam'];
+const getPublicAssetPath = (relativePath: string) => `${import.meta.env.BASE_URL}${relativePath.replace(/^\/+/, '')}`;
+
+const normalizeKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const getMatchedHeaders = (headers: string[], candidateKeys: string[]) => {
+  const normalizedCandidates = candidateKeys.map(normalizeKey);
+  return headers.filter((header) => normalizedCandidates.includes(normalizeKey(header)));
+};
+
+const getRowValue = (row: Record<string, unknown>, candidateKeys: string[]) => {
+  const normalizedEntries = Object.entries(row).map(([key, value]) => [normalizeKey(key), value] as const);
+  for (const candidateKey of candidateKeys) {
+    const match = normalizedEntries.find(([key]) => key === normalizeKey(candidateKey));
+    if (match) return match[1];
+  }
+  return undefined;
+};
+
+const normalizePrecinct = (value: unknown) => {
+  if (value === null || value === undefined) return null;
+  const precinct = String(value).trim().toUpperCase().replace(/^PRECINCT\s+/, '');
+  return precinct || null;
+};
+
+const normalizeCode = (value: unknown) => {
+  if (value === null || value === undefined) return null;
+  const code = String(value).trim().toUpperCase();
+  return code || null;
+};
+
+const normalizeNumericValue = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return null;
+
+  const parsed = Number(value.replace(/,/g, '').trim());
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeYearValue = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return YEARLESS_CVAP;
+
+  const match = value.match(/(19|20)\d{2}/);
+  return match ? Number(match[0]) : YEARLESS_CVAP;
+};
+
+const isUnionCountyRow = (row: Record<string, unknown>) => {
+  const county = getRowValue(row, COUNTY_KEYS);
+  if (county === null || county === undefined || String(county).trim() === '') {
+    return true;
+  }
+
+  return String(county).toUpperCase().includes(UNION_COUNTY);
+};
+
+const normalizeCvapRecord = (row: Record<string, unknown>): CVAPRecord | null => {
+  if (!isUnionCountyRow(row)) return null;
+
+  const precinct = normalizePrecinct(getRowValue(row, CVAP_PRECINCT_KEYS));
+  const cvapTotal = normalizeNumericValue(getRowValue(row, CVAP_TOTAL_KEYS));
+  const year = normalizeYearValue(getRowValue(row, CVAP_YEAR_KEYS));
+
+  if (!precinct || cvapTotal === null) {
+    return null;
+  }
+
+  return {
+    year,
+    precinct_abbrv: precinct,
+    cvap_total: cvapTotal,
+  };
+};
+
+const normalizeVoterRecord = (row: Record<string, unknown>): VoterRecord | null => {
+  if (!isUnionCountyRow(row)) return null;
+
+  const precinct = normalizePrecinct(getRowValue(row, ['precinct_abbrv', 'precinct']));
+  const party = normalizeCode(getRowValue(row, ['party_cd', 'party']));
+  const race = normalizeCode(getRowValue(row, ['race_code', 'race']));
+  const sex = normalizeCode(getRowValue(row, ['sex_code', 'sex', 'gender']));
+  const totalVoters = normalizeNumericValue(getRowValue(row, ['total_voters', 'voters', 'count'])) ?? 0;
+
+  if (!precinct || !party || !race || !sex) return null;
+
+  return {
+    county_desc: String(getRowValue(row, COUNTY_KEYS) || UNION_COUNTY),
+    precinct_abbrv: precinct,
+    age: getRowValue(row, ['age']) ? String(getRowValue(row, ['age'])) : undefined,
+    party_cd: party,
+    race_code: race,
+    ethnic_code: getRowValue(row, ['ethnic_code']) ? String(getRowValue(row, ['ethnic_code'])) : '',
+    sex_code: sex,
+    total_voters: totalVoters,
+  };
+};
+
+const normalizeHistoryRecord = (row: Record<string, unknown>): HistoryRecord | null => {
+  if (!isUnionCountyRow(row)) return null;
+
+  const precinct = normalizePrecinct(getRowValue(row, ['precinct_abbrv', 'precinct']));
+  const party = normalizeCode(getRowValue(row, ['party_cd', 'party']));
+  const race = normalizeCode(getRowValue(row, ['race_code', 'race']));
+  const sex = normalizeCode(getRowValue(row, ['sex_code', 'sex', 'gender']));
+  const electionDateRaw = getRowValue(row, ['election_date', 'date', 'electionday']);
+  const electionDate = electionDateRaw ? String(electionDateRaw) : null;
+  const totalVoters = normalizeNumericValue(getRowValue(row, ['total_voters', 'voters', 'count']));
+
+  if (!precinct || !party || !race || !sex || !electionDate) return null;
+
+  return {
+    county_desc: String(getRowValue(row, COUNTY_KEYS) || UNION_COUNTY),
+    precinct_abbrv: precinct,
+    voting_method: getRowValue(row, ['voting_method']) ? String(getRowValue(row, ['voting_method'])) : undefined,
+    race_code: race,
+    sex_code: sex,
+    party_cd: party,
+    election_date: electionDate,
+    total_voters: totalVoters ?? undefined,
+  };
+};
+
+const getVoterDropReason = (row: Record<string, unknown>) => {
+  if (!isUnionCountyRow(row)) return 'Outside Union County filter';
+
+  const precinct = normalizePrecinct(getRowValue(row, ['precinct_abbrv', 'precinct']));
+  const party = normalizeCode(getRowValue(row, ['party_cd', 'party']));
+  const race = normalizeCode(getRowValue(row, ['race_code', 'race']));
+  const sex = normalizeCode(getRowValue(row, ['sex_code', 'sex', 'gender']));
+
+  if (!precinct && !party && !race && !sex) return 'Missing precinct, party, race, and sex fields';
+  if (!precinct) return 'Missing precinct value';
+  if (!party) return 'Missing party value';
+  if (!race) return 'Missing race value';
+  if (!sex) return 'Missing sex/gender value';
+  return 'Row could not be normalized';
+};
+
+const getHistoryDropReason = (row: Record<string, unknown>) => {
+  if (!isUnionCountyRow(row)) return 'Outside Union County filter';
+
+  const precinct = normalizePrecinct(getRowValue(row, ['precinct_abbrv', 'precinct']));
+  const party = normalizeCode(getRowValue(row, ['party_cd', 'party']));
+  const race = normalizeCode(getRowValue(row, ['race_code', 'race']));
+  const sex = normalizeCode(getRowValue(row, ['sex_code', 'sex', 'gender']));
+  const electionDateRaw = getRowValue(row, ['election_date', 'date', 'electionday']);
+
+  if (!precinct) return 'Missing precinct value';
+  if (!party) return 'Missing party value';
+  if (!race) return 'Missing race value';
+  if (!sex) return 'Missing sex/gender value';
+  if (!electionDateRaw) return 'Missing election date';
+  return 'Row could not be normalized';
+};
 
 // --- Components ---
 
@@ -65,10 +231,27 @@ const StatCard = ({ title, value, subValue, icon: Icon, color }: { title: string
 );
 
 export default function App() {
+  type UploadSummary = { parsedRows: number; usableRows: number; droppedRows: number };
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'upload' | 'readme'>('upload');
-  const [voterData, setVoterData] = useState<any[]>([]);
-  const [historyData, setHistoryData] = useState<any[]>([]);
-  const [cvapData, setCvapData] = useState<any[]>([]);
+  const [voterData, setVoterData] = useState<VoterRecord[]>([]);
+  const [historyData, setHistoryData] = useState<HistoryRecord[]>([]);
+  const [cvapData, setCvapData] = useState<CVAPRecord[]>([]);
+  const [voterUploadSummary, setVoterUploadSummary] = useState<UploadSummary | null>(null);
+  const [historyUploadSummary, setHistoryUploadSummary] = useState<UploadSummary | null>(null);
+  const [cvapUploadSummary, setCvapUploadSummary] = useState<UploadSummary | null>(null);
+  const [voterDroppedRows, setVoterDroppedRows] = useState<Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }>>([]);
+  const [historyDroppedRows, setHistoryDroppedRows] = useState<Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }>>([]);
+  const [cvapDroppedRows, setCvapDroppedRows] = useState<Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }>>([]);
+  const [cvapHeaderValidation, setCvapHeaderValidation] = useState<{
+    headers: string[];
+    matchedHeaders: {
+      precinct: string[];
+      total: string[];
+      year: string[];
+      county: string[];
+    };
+  } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,27 +264,125 @@ export default function App() {
   const handleFileUpload = (type: 'voter' | 'history' | 'cvap', file: File) => {
     setIsProcessing(true);
     setError(null);
+    if (type === 'voter') {
+      setVoterUploadSummary(null);
+      setVoterDroppedRows([]);
+    } else if (type === 'history') {
+      setHistoryUploadSummary(null);
+      setHistoryDroppedRows([]);
+    } else if (type === 'cvap') {
+      setCvapUploadSummary(null);
+      setCvapDroppedRows([]);
+      setCvapHeaderValidation(null);
+    }
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       dynamicTyping: true,
-      complete: (results) => {
-        const data = results.data as any[];
-        
-        // Basic validation for Union County
-        const filtered = data.filter(row => {
-          if (!row.county_desc) return true; // Some files might not have it, handle gracefully
-          return String(row.county_desc).toUpperCase() === UNION_COUNTY;
-        });
+      complete: (results: ParseResult<Record<string, unknown>>) => {
+        const data = results.data as Record<string, unknown>[];
 
-        if (type === 'voter') setVoterData(filtered);
-        else if (type === 'history') setHistoryData(filtered);
-        else if (type === 'cvap') setCvapData(filtered);
+        if (type === 'cvap') {
+          const firstRow = data.find((row) => Object.keys(row).length > 0);
+          const headers = firstRow ? Object.keys(firstRow) : [];
+          setCvapHeaderValidation({
+            headers,
+            matchedHeaders: {
+              precinct: getMatchedHeaders(headers, CVAP_PRECINCT_KEYS),
+              total: getMatchedHeaders(headers, CVAP_TOTAL_KEYS),
+              year: getMatchedHeaders(headers, CVAP_YEAR_KEYS),
+              county: getMatchedHeaders(headers, COUNTY_KEYS),
+            },
+          });
+
+          const droppedRows: Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }> = [];
+          const normalizedCvap = data
+            .map((row, index) => {
+              const normalized = normalizeCvapRecord(row);
+              if (normalized) {
+                return normalized;
+              }
+
+              const precinctValue = normalizePrecinct(getRowValue(row, CVAP_PRECINCT_KEYS));
+              const cvapValue = normalizeNumericValue(getRowValue(row, CVAP_TOTAL_KEYS));
+              const countyMatches = isUnionCountyRow(row);
+
+              let reason = 'Row could not be normalized';
+              if (!countyMatches) reason = 'Outside Union County filter';
+              else if (!precinctValue && cvapValue === null) reason = 'Missing precinct and CVAP total values';
+              else if (!precinctValue) reason = 'Missing precinct value';
+              else if (cvapValue === null) reason = 'Missing or invalid CVAP total value';
+
+              droppedRows.push({
+                rowNumber: index + 2,
+                reason,
+                row,
+              });
+              return null;
+            })
+            .filter((record): record is CVAPRecord => record !== null);
+
+          setCvapDroppedRows(droppedRows);
+
+          setCvapUploadSummary({
+            parsedRows: data.length,
+            usableRows: normalizedCvap.length,
+            droppedRows: Math.max(data.length - normalizedCvap.length, 0),
+          });
+
+          if (normalizedCvap.length === 0 && data.length > 0) {
+            setError('Could not detect CVAP records. Expected precinct and CVAP total columns, with an optional year column.');
+            setIsProcessing(false);
+            return;
+          }
+
+          setCvapData(normalizedCvap);
+          setIsProcessing(false);
+          return;
+        }
+
+        if (type === 'voter') {
+          const droppedRows: Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }> = [];
+          const normalized = data
+            .map((row, index) => {
+              const record = normalizeVoterRecord(row);
+              if (record) return record;
+              droppedRows.push({ rowNumber: index + 2, reason: getVoterDropReason(row), row });
+              return null;
+            })
+            .filter((record): record is VoterRecord => record !== null);
+
+          setVoterData(normalized);
+          setVoterDroppedRows(droppedRows);
+          setVoterUploadSummary({
+            parsedRows: data.length,
+            usableRows: normalized.length,
+            droppedRows: Math.max(data.length - normalized.length, 0),
+          });
+        } else if (type === 'history') {
+          const droppedRows: Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }> = [];
+          const normalized = data
+            .map((row, index) => {
+              const record = normalizeHistoryRecord(row);
+              if (record) return record;
+              droppedRows.push({ rowNumber: index + 2, reason: getHistoryDropReason(row), row });
+              return null;
+            })
+            .filter((record): record is HistoryRecord => record !== null);
+
+          setHistoryData(normalized);
+          setHistoryDroppedRows(droppedRows);
+          setHistoryUploadSummary({
+            parsedRows: data.length,
+            usableRows: normalized.length,
+            droppedRows: Math.max(data.length - normalized.length, 0),
+          });
+        }
 
         setIsProcessing(false);
       },
-      error: (err) => {
+      error: (err: Error | ParseError) => {
         setError(`Error parsing ${type} file: ${err.message}`);
         setIsProcessing(false);
       }
@@ -113,6 +394,21 @@ export default function App() {
     if (voterData.length === 0 && historyData.length === 0) return [];
 
     const stats: PrecinctStats[] = [];
+    const cvapByPrecinctYear = new Map<string, number>();
+    const cvapFallbackByPrecinct = new Map<string, number>();
+
+    cvapData.forEach((record) => {
+      const precinct = normalizePrecinct(record.precinct_abbrv);
+      if (!precinct) return;
+
+      const exactKey = `${record.year}:${precinct}`;
+      cvapByPrecinctYear.set(exactKey, (cvapByPrecinctYear.get(exactKey) || 0) + record.cvap_total);
+
+      if (record.year === YEARLESS_CVAP) {
+        cvapFallbackByPrecinct.set(precinct, (cvapFallbackByPrecinct.get(precinct) || 0) + record.cvap_total);
+      }
+    });
+
     const precincts = Array.from(new Set([
       ...voterData.map(d => d.precinct_abbrv),
       ...historyData.map(d => d.precinct_abbrv)
@@ -181,6 +477,18 @@ export default function App() {
           turnoutByGender[g] = reg > 0 ? (cast / reg) * 100 : 0;
         });
 
+        const normalizedPrecinct = normalizePrecinct(precinct);
+        const alternatePrecinct = normalizedPrecinct?.replace(/^0+/, '') || normalizedPrecinct;
+        const exactCvap = normalizedPrecinct
+          ? cvapByPrecinctYear.get(`${year}:${normalizedPrecinct}`) ?? cvapByPrecinctYear.get(`${year}:${alternatePrecinct}`)
+          : undefined;
+        const fallbackCvap = normalizedPrecinct
+          ? cvapFallbackByPrecinct.get(normalizedPrecinct) ?? cvapFallbackByPrecinct.get(alternatePrecinct || '')
+          : undefined;
+        const cvapTotal = exactCvap ?? fallbackCvap ?? 0;
+        const registrationShareOfCvap = cvapTotal > 0 ? (totalReg / cvapTotal) * 100 : 0;
+        const ballotShareOfCvap = cvapTotal > 0 ? (totalBallots / cvapTotal) * 100 : 0;
+
         // Density
         const densityByRace: Record<string, number> = {};
         RACE_CODES.forEach(r => {
@@ -203,6 +511,9 @@ export default function App() {
             turnoutByRace,
             turnoutByParty,
             turnoutByGender,
+            cvapTotal,
+            registrationShareOfCvap,
+            ballotShareOfCvap,
             densityByRace
           });
         }
@@ -210,7 +521,10 @@ export default function App() {
     });
 
     return stats;
-  }, [voterData, historyData]);
+  }, [cvapData, voterData, historyData]);
+
+  const currentYearStats = useMemo(() => processedStats.filter(s => s.year === selectedYear), [processedStats, selectedYear]);
+  const currentYearCvapPrecincts = useMemo(() => currentYearStats.filter(s => s.cvapTotal > 0), [currentYearStats]);
 
   const filteredStats = useMemo(() => {
     return processedStats.filter(s => {
@@ -220,22 +534,339 @@ export default function App() {
     });
   }, [processedStats, selectedYear, selectedPrecinct]);
 
-  const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(filteredStats.map(s => ({
+  const cvapMatchSummary = useMemo(() => {
+    if (cvapData.length === 0) return null;
+
+    const statsKeySet = new Set(
+      processedStats.map((s) => {
+        const normalized = normalizePrecinct(s.precinct);
+        return normalized ? `${s.year}:${normalized}` : null;
+      }).filter((key): key is string => key !== null)
+    );
+
+    const statsPrecinctSet = new Set(
+      processedStats
+        .map((s) => normalizePrecinct(s.precinct))
+        .filter((value): value is string => Boolean(value))
+    );
+
+    let matchedRows = 0;
+    cvapData.forEach((record) => {
+      const precinct = normalizePrecinct(record.precinct_abbrv);
+      if (!precinct) return;
+
+      const noLeadingZeros = precinct.replace(/^0+/, '');
+      if (record.year === YEARLESS_CVAP) {
+        if (statsPrecinctSet.has(precinct) || statsPrecinctSet.has(noLeadingZeros)) {
+          matchedRows += 1;
+        }
+        return;
+      }
+
+      const exactKey = `${record.year}:${precinct}`;
+      const altKey = `${record.year}:${noLeadingZeros}`;
+      if (statsKeySet.has(exactKey) || statsKeySet.has(altKey)) {
+        matchedRows += 1;
+      }
+    });
+
+    return {
+      totalRows: cvapData.length,
+      matchedRows,
+      unmatchedRows: Math.max(cvapData.length - matchedRows, 0),
+    };
+  }, [cvapData, processedStats]);
+
+  const cvapUnmatchedRows = useMemo(() => {
+    if (cvapData.length === 0) return [] as Array<{ year: number; precinct_abbrv: string; cvap_total: number; reason: string }>;
+
+    const statsKeySet = new Set(
+      processedStats.map((s) => {
+        const normalized = normalizePrecinct(s.precinct);
+        return normalized ? `${s.year}:${normalized}` : null;
+      }).filter((key): key is string => key !== null)
+    );
+
+    const statsPrecinctSet = new Set(
+      processedStats
+        .map((s) => normalizePrecinct(s.precinct))
+        .filter((value): value is string => Boolean(value))
+    );
+
+    return cvapData
+      .map((record) => {
+        const precinct = normalizePrecinct(record.precinct_abbrv);
+        if (!precinct) {
+          return { ...record, reason: 'Missing normalized precinct value' };
+        }
+
+        const noLeadingZeros = precinct.replace(/^0+/, '');
+        if (record.year === YEARLESS_CVAP) {
+          const hasPrecinctMatch = statsPrecinctSet.has(precinct) || statsPrecinctSet.has(noLeadingZeros);
+          return hasPrecinctMatch ? null : { ...record, reason: 'No matching precinct in voter/history data' };
+        }
+
+        const exactKey = `${record.year}:${precinct}`;
+        const altKey = `${record.year}:${noLeadingZeros}`;
+        const hasYearMatch = statsKeySet.has(exactKey) || statsKeySet.has(altKey);
+        return hasYearMatch ? null : { ...record, reason: 'No matching precinct-year in voter/history data' };
+      })
+      .filter((row): row is { year: number; precinct_abbrv: string; cvap_total: number; reason: string } => row !== null);
+  }, [cvapData, processedStats]);
+
+  const exportCvapIssueRows = () => {
+    const rows = [
+      ...cvapDroppedRows.map((row) => ({
+        IssueType: 'Dropped During Parse',
+        RowNumber: row.rowNumber,
+        Reason: row.reason,
+        Year: '',
+        Precinct: String(getRowValue(row.row, CVAP_PRECINCT_KEYS) || ''),
+        CVAP: String(getRowValue(row.row, CVAP_TOTAL_KEYS) || ''),
+      })),
+      ...cvapUnmatchedRows.map((row, index) => ({
+        IssueType: 'Unmatched In Analysis',
+        RowNumber: index + 1,
+        Reason: row.reason,
+        Year: row.year === YEARLESS_CVAP ? '' : row.year,
+        Precinct: row.precinct_abbrv,
+        CVAP: row.cvap_total,
+      })),
+    ];
+
+    if (rows.length === 0) {
+      setError('No CVAP issue rows are available to export.');
+      return;
+    }
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'cvap-issue-rows.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportVoterIssueRows = () => {
+    if (voterDroppedRows.length === 0) {
+      setError('No voter issue rows are available to export.');
+      return;
+    }
+
+    const rows = voterDroppedRows.map((row) => ({
+      RowNumber: row.rowNumber,
+      Reason: row.reason,
+      Precinct: String(getRowValue(row.row, ['precinct_abbrv', 'precinct']) || ''),
+      Party: String(getRowValue(row.row, ['party_cd', 'party']) || ''),
+      Race: String(getRowValue(row.row, ['race_code', 'race']) || ''),
+      Sex: String(getRowValue(row.row, ['sex_code', 'sex', 'gender']) || ''),
+    }));
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'voter-issue-rows.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportHistoryIssueRows = () => {
+    if (historyDroppedRows.length === 0) {
+      setError('No history issue rows are available to export.');
+      return;
+    }
+
+    const rows = historyDroppedRows.map((row) => ({
+      RowNumber: row.rowNumber,
+      Reason: row.reason,
+      Precinct: String(getRowValue(row.row, ['precinct_abbrv', 'precinct']) || ''),
+      ElectionDate: String(getRowValue(row.row, ['election_date', 'date', 'electionday']) || ''),
+      Party: String(getRowValue(row.row, ['party_cd', 'party']) || ''),
+      Race: String(getRowValue(row.row, ['race_code', 'race']) || ''),
+      Sex: String(getRowValue(row.row, ['sex_code', 'sex', 'gender']) || ''),
+    }));
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'history-issue-rows.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const loadDemoData = async () => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const [voterResponse, historyResponse, cvapResponse] = await Promise.all([
+        fetch(getPublicAssetPath('data/demo-voter.csv')),
+        fetch(getPublicAssetPath('data/demo-history.csv')),
+        fetch(getPublicAssetPath('data/demo-cvap.csv')),
+      ]);
+
+      if (!voterResponse.ok || !historyResponse.ok || !cvapResponse.ok) {
+        throw new Error('Could not load one or more demo data files.');
+      }
+
+      const [voterText, historyText, cvapText] = await Promise.all([
+        voterResponse.text(),
+        historyResponse.text(),
+        cvapResponse.text(),
+      ]);
+
+      const parsedVoter = Papa.parse<Record<string, unknown>>(voterText, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true,
+      }).data;
+
+      const parsedHistory = Papa.parse<Record<string, unknown>>(historyText, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true,
+      }).data;
+
+      const parsedCvap = Papa.parse<Record<string, unknown>>(cvapText, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true,
+      }).data;
+
+      setVoterData(
+        parsedVoter
+          .map(normalizeVoterRecord)
+          .filter((record: VoterRecord | null): record is VoterRecord => record !== null)
+      );
+      const demoVoterDropped = parsedVoter
+        .map((row: Record<string, unknown>, index: number) => normalizeVoterRecord(row) ? null : ({ rowNumber: index + 2, reason: getVoterDropReason(row), row }))
+        .filter((row: { rowNumber: number; reason: string; row: Record<string, unknown> } | null): row is { rowNumber: number; reason: string; row: Record<string, unknown> } => row !== null);
+      setVoterDroppedRows(demoVoterDropped);
+      setVoterUploadSummary({
+        parsedRows: parsedVoter.length,
+        usableRows: parsedVoter.length - demoVoterDropped.length,
+        droppedRows: demoVoterDropped.length,
+      });
+
+      setHistoryData(
+        parsedHistory
+          .map(normalizeHistoryRecord)
+          .filter((record: HistoryRecord | null): record is HistoryRecord => record !== null)
+      );
+      const demoHistoryDropped = parsedHistory
+        .map((row: Record<string, unknown>, index: number) => normalizeHistoryRecord(row) ? null : ({ rowNumber: index + 2, reason: getHistoryDropReason(row), row }))
+        .filter((row: { rowNumber: number; reason: string; row: Record<string, unknown> } | null): row is { rowNumber: number; reason: string; row: Record<string, unknown> } => row !== null);
+      setHistoryDroppedRows(demoHistoryDropped);
+      setHistoryUploadSummary({
+        parsedRows: parsedHistory.length,
+        usableRows: parsedHistory.length - demoHistoryDropped.length,
+        droppedRows: demoHistoryDropped.length,
+      });
+
+      const firstCvapRow = parsedCvap.find((row: Record<string, unknown>) => Object.keys(row).length > 0);
+      const headers = firstCvapRow ? Object.keys(firstCvapRow) : [];
+      setCvapHeaderValidation({
+        headers,
+        matchedHeaders: {
+          precinct: getMatchedHeaders(headers, CVAP_PRECINCT_KEYS),
+          total: getMatchedHeaders(headers, CVAP_TOTAL_KEYS),
+          year: getMatchedHeaders(headers, CVAP_YEAR_KEYS),
+          county: getMatchedHeaders(headers, COUNTY_KEYS),
+        },
+      });
+
+      const droppedRows: Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }> = [];
+      const normalizedCvap = parsedCvap
+        .map((row: Record<string, unknown>, index: number) => {
+          const normalized = normalizeCvapRecord(row);
+          if (normalized) {
+            return normalized;
+          }
+
+          const precinctValue = normalizePrecinct(getRowValue(row, CVAP_PRECINCT_KEYS));
+          const cvapValue = normalizeNumericValue(getRowValue(row, CVAP_TOTAL_KEYS));
+          const countyMatches = isUnionCountyRow(row);
+
+          let reason = 'Row could not be normalized';
+          if (!countyMatches) reason = 'Outside Union County filter';
+          else if (!precinctValue && cvapValue === null) reason = 'Missing precinct and CVAP total values';
+          else if (!precinctValue) reason = 'Missing precinct value';
+          else if (cvapValue === null) reason = 'Missing or invalid CVAP total value';
+
+          droppedRows.push({
+            rowNumber: index + 2,
+            reason,
+            row,
+          });
+          return null;
+        })
+        .filter((record: CVAPRecord | null): record is CVAPRecord => record !== null);
+
+      setCvapData(normalizedCvap);
+      setCvapDroppedRows(droppedRows);
+      setCvapUploadSummary({
+        parsedRows: parsedCvap.length,
+        usableRows: normalizedCvap.length,
+        droppedRows: Math.max(parsedCvap.length - normalizedCvap.length, 0),
+      });
+      setActiveTab('dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load demo data.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const avgRegistrationShareOfCvap = useMemo(() => {
+    const totalCvap = filteredStats.reduce((acc, s) => acc + s.cvapTotal, 0);
+    const totalRegistered = filteredStats.reduce((acc, s) => acc + s.totalReg, 0);
+    return totalCvap > 0 ? (totalRegistered / totalCvap) * 100 : 0;
+  }, [filteredStats]);
+
+  const exportSummaryCsv = () => {
+    const rows = filteredStats.map(s => ({
       Year: s.year,
       Precinct: s.precinct,
+      CVAP: s.cvapTotal || '',
       'Total Registered': s.totalReg,
+      'Registered / CVAP %': s.cvapTotal > 0 ? s.registrationShareOfCvap.toFixed(2) : '',
       'Total Ballots': s.totalBallots,
       'Turnout %': s.turnoutOverall.toFixed(2),
+      'Ballots / CVAP %': s.cvapTotal > 0 ? s.ballotShareOfCvap.toFixed(2) : '',
       ...Object.fromEntries(RACE_CODES.map(r => [`Reg ${r}`, s.regByRace[r] || 0])),
       ...Object.fromEntries(PARTY_CODES.map(p => [`Reg ${p}`, s.regByParty[p] || 0])),
       ...Object.fromEntries(GENDER_CODES.map(g => [`Reg ${g}`, s.regByGender[g] || 0])),
       ...Object.fromEntries(RACE_CODES.map(r => [`Turnout ${r} %`, (s.turnoutByRace[r] || 0).toFixed(2)])),
       ...Object.fromEntries(RACE_CODES.map(r => [`Density ${r} %`, (s.densityByRace[r] || 0).toFixed(2)])),
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Precinct Analysis");
-    XLSX.writeFile(wb, `Union_County_Analysis_${selectedYear}.xlsx`);
+    }));
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Union_County_Analysis_${selectedYear}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -290,6 +921,19 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-8"
             >
+              <div className="flex justify-end">
+                <button
+                  onClick={loadDemoData}
+                  disabled={isProcessing}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
+                    isProcessing ? "bg-gray-400 text-white cursor-not-allowed" : "bg-gray-800 text-white hover:bg-gray-900"
+                  )}
+                >
+                  {isProcessing ? 'Loading Demo...' : 'Load Demo Dataset'}
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-8 rounded-2xl border-2 border-dashed border-gray-200 hover:border-blue-400 transition-colors group">
                   <div className="flex flex-col items-center text-center space-y-4">
@@ -302,7 +946,7 @@ export default function App() {
                     </div>
                     <label className="cursor-pointer bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
                       Select File
-                      <input type="file" className="hidden" accept=".txt,.csv" onChange={(e) => e.target.files?.[0] && handleFileUpload('voter', e.target.files[0])} />
+                      <input type="file" disabled={isProcessing} className="hidden" accept=".txt,.csv" onChange={(e) => e.target.files?.[0] && handleFileUpload('voter', e.target.files[0])} />
                     </label>
                     {voterData.length > 0 && (
                       <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
@@ -324,7 +968,7 @@ export default function App() {
                     </div>
                     <label className="cursor-pointer bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors">
                       Select File
-                      <input type="file" className="hidden" accept=".txt,.csv" onChange={(e) => e.target.files?.[0] && handleFileUpload('history', e.target.files[0])} />
+                      <input type="file" disabled={isProcessing} className="hidden" accept=".txt,.csv" onChange={(e) => e.target.files?.[0] && handleFileUpload('history', e.target.files[0])} />
                     </label>
                     {historyData.length > 0 && (
                       <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
@@ -342,11 +986,11 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold">Census CVAP</h3>
-                      <p className="text-sm text-gray-500 mt-1">Upload Citizen Voting Age Population data</p>
+                      <p className="text-sm text-gray-500 mt-1">Upload precinct CVAP data with precinct and total columns</p>
                     </div>
                     <label className="cursor-pointer bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors">
                       Select File
-                      <input type="file" className="hidden" accept=".txt,.csv" onChange={(e) => e.target.files?.[0] && handleFileUpload('cvap', e.target.files[0])} />
+                      <input type="file" disabled={isProcessing} className="hidden" accept=".txt,.csv" onChange={(e) => e.target.files?.[0] && handleFileUpload('cvap', e.target.files[0])} />
                     </label>
                     {cvapData.length > 0 && (
                       <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
@@ -354,9 +998,73 @@ export default function App() {
                         {cvapData.length.toLocaleString()} records loaded
                       </div>
                     )}
+                    <a
+                      href={getPublicAssetPath('data/cvap-template.csv')}
+                      download
+                      className="text-xs font-medium text-orange-700 underline decoration-dotted hover:text-orange-800"
+                    >
+                      Download CVAP template
+                    </a>
                   </div>
                 </div>
               </div>
+
+              {cvapUploadSummary && (
+                <div className="bg-orange-50 border border-orange-200 p-4 rounded-xl text-orange-900">
+                  <p className="text-sm font-bold">CVAP Upload Summary</p>
+                  <p className="text-sm mt-1">Parsed: {cvapUploadSummary.parsedRows.toLocaleString()} rows, usable: {cvapUploadSummary.usableRows.toLocaleString()}, dropped: {cvapUploadSummary.droppedRows.toLocaleString()}.</p>
+                  {cvapMatchSummary && (
+                    <p className="text-sm mt-1">Matched to precinct-year analysis rows: {cvapMatchSummary.matchedRows.toLocaleString()} / {cvapMatchSummary.totalRows.toLocaleString()}.</p>
+                  )}
+                  {cvapHeaderValidation && (
+                    <div className="mt-3 text-sm space-y-1">
+                      <p className="font-semibold">Header Validation</p>
+                      <p>Precinct headers: {cvapHeaderValidation.matchedHeaders.precinct.length > 0 ? cvapHeaderValidation.matchedHeaders.precinct.join(', ') : 'Missing'}</p>
+                      <p>CVAP total headers: {cvapHeaderValidation.matchedHeaders.total.length > 0 ? cvapHeaderValidation.matchedHeaders.total.join(', ') : 'Missing'}</p>
+                      <p>Year headers (optional): {cvapHeaderValidation.matchedHeaders.year.length > 0 ? cvapHeaderValidation.matchedHeaders.year.join(', ') : 'Not provided'}</p>
+                      <p>County headers (optional): {cvapHeaderValidation.matchedHeaders.county.length > 0 ? cvapHeaderValidation.matchedHeaders.county.join(', ') : 'Not provided'}</p>
+                    </div>
+                  )}
+                  {(cvapDroppedRows.length > 0 || cvapUnmatchedRows.length > 0) && (
+                    <button
+                      onClick={exportCvapIssueRows}
+                      className="mt-3 bg-orange-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-orange-800 transition-colors"
+                    >
+                      Export CVAP Issue Rows CSV
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {voterUploadSummary && (
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-blue-900">
+                  <p className="text-sm font-bold">Voter Upload Summary</p>
+                  <p className="text-sm mt-1">Parsed: {voterUploadSummary.parsedRows.toLocaleString()} rows, usable: {voterUploadSummary.usableRows.toLocaleString()}, dropped: {voterUploadSummary.droppedRows.toLocaleString()}.</p>
+                  {voterDroppedRows.length > 0 && (
+                    <button
+                      onClick={exportVoterIssueRows}
+                      className="mt-3 bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-blue-800 transition-colors"
+                    >
+                      Export Voter Issue Rows CSV
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {historyUploadSummary && (
+                <div className="bg-purple-50 border border-purple-200 p-4 rounded-xl text-purple-900">
+                  <p className="text-sm font-bold">History Upload Summary</p>
+                  <p className="text-sm mt-1">Parsed: {historyUploadSummary.parsedRows.toLocaleString()} rows, usable: {historyUploadSummary.usableRows.toLocaleString()}, dropped: {historyUploadSummary.droppedRows.toLocaleString()}.</p>
+                  {historyDroppedRows.length > 0 && (
+                    <button
+                      onClick={exportHistoryIssueRows}
+                      className="mt-3 bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-purple-800 transition-colors"
+                    >
+                      Export History Issue Rows CSV
+                    </button>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3 text-red-700">
@@ -404,8 +1112,10 @@ export default function App() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-500 font-medium">Election Year</label>
+                  <label htmlFor="election-year" className="text-sm text-gray-500 font-medium">Election Year</label>
                   <select 
+                    id="election-year"
+                    aria-label="Election Year"
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(Number(e.target.value))}
                     className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
@@ -415,8 +1125,10 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-500 font-medium">Precinct</label>
+                  <label htmlFor="precinct-filter" className="text-sm text-gray-500 font-medium">Precinct</label>
                   <select 
+                    id="precinct-filter"
+                    aria-label="Precinct"
                     value={selectedPrecinct}
                     onChange={(e) => setSelectedPrecinct(e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
@@ -430,17 +1142,23 @@ export default function App() {
 
                 <div className="ml-auto">
                   <button 
-                    onClick={exportToExcel}
-                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-sm"
+                    onClick={exportSummaryCsv}
+                    disabled={filteredStats.length === 0 || isProcessing}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm",
+                      filteredStats.length === 0 || isProcessing
+                        ? "bg-green-300 text-white cursor-not-allowed"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                    )}
                   >
                     <FileDown size={18} />
-                    Export to Excel
+                    Export Summary CSV
                   </button>
                 </div>
               </div>
 
               {/* Summary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <StatCard 
                   title="Total Registered" 
                   value={filteredStats.reduce((acc, s) => acc + s.totalReg, 0).toLocaleString()} 
@@ -465,6 +1183,13 @@ export default function App() {
                   icon={MapPin} 
                   color="bg-orange-600" 
                 />
+                <StatCard 
+                  title="Reg / CVAP" 
+                  value={currentYearCvapPrecincts.length > 0 ? `${avgRegistrationShareOfCvap.toFixed(2)}%` : 'N/A'} 
+                  subValue={currentYearCvapPrecincts.length > 0 ? `${currentYearCvapPrecincts.length} precincts matched to CVAP` : 'Upload CVAP data to enable'}
+                  icon={Database} 
+                  color="bg-slate-700" 
+                />
               </div>
 
               {/* Map Section */}
@@ -477,11 +1202,20 @@ export default function App() {
                     </h3>
                     <p className="text-xs text-gray-400 font-medium italic">Interactive: Hover for details, Click to filter</p>
                   </div>
-                  <ChoroplethMap 
-                    stats={processedStats.filter(s => s.year === selectedYear)}
-                    selectedPrecinct={selectedPrecinct}
-                    onPrecinctSelect={setSelectedPrecinct}
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="h-[500px] w-full flex flex-col items-center justify-center bg-gray-50 rounded-xl border border-gray-200">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                        <p className="text-gray-500 font-medium">Loading map module...</p>
+                      </div>
+                    }
+                  >
+                    <ChoroplethMap
+                      stats={currentYearStats}
+                      selectedPrecinct={selectedPrecinct}
+                      onPrecinctSelect={setSelectedPrecinct}
+                    />
+                  </Suspense>
                 </div>
                 
                 <div className="space-y-4">
@@ -515,9 +1249,12 @@ export default function App() {
                                   const data = [
                                     { Metric: 'Year', Value: s.year },
                                     { Metric: 'Precinct', Value: s.precinct },
+                                    { Metric: 'CVAP', Value: s.cvapTotal || '' },
                                     { Metric: 'Total Registered', Value: s.totalReg },
+                                    { Metric: 'Registered / CVAP %', Value: s.cvapTotal > 0 ? s.registrationShareOfCvap.toFixed(2) : '' },
                                     { Metric: 'Total Ballots Cast', Value: s.totalBallots },
                                     { Metric: 'Overall Turnout %', Value: s.turnoutOverall.toFixed(2) },
+                                    { Metric: 'Ballots / CVAP %', Value: s.cvapTotal > 0 ? s.ballotShareOfCvap.toFixed(2) : '' },
                                     ...RACE_CODES.map(r => ({ Metric: `Reg Race ${r}`, Value: s.regByRace[r] || 0 })),
                                     ...PARTY_CODES.map(p => ({ Metric: `Reg Party ${p}`, Value: s.regByParty[p] || 0 })),
                                     ...GENDER_CODES.map(g => ({ Metric: `Reg Gender ${g}`, Value: s.regByGender[g] || 0 })),
@@ -535,13 +1272,42 @@ export default function App() {
                                   document.body.appendChild(link);
                                   link.click();
                                   document.body.removeChild(link);
+                                  URL.revokeObjectURL(url);
                                 }}
-                                className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm flex items-center gap-2 text-xs font-bold"
+                                disabled={isProcessing}
+                                className={cn(
+                                  "p-2 rounded-lg transition-all shadow-sm flex items-center gap-2 text-xs font-bold",
+                                  isProcessing
+                                    ? "bg-blue-100 text-blue-300 cursor-not-allowed"
+                                    : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
+                                )}
                                 title="Export Precinct CSV"
                               >
                                 <Download size={16} />
                                 Export CSV
                               </button>
+                            </div>
+
+                            <div className="space-y-4">
+                              <h5 className="text-sm font-bold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2">CVAP Coverage</h5>
+                              {filteredStats[0].cvapTotal > 0 ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">CVAP</p>
+                                    <p className="mt-1 text-lg font-bold text-gray-900">{filteredStats[0].cvapTotal.toLocaleString()}</p>
+                                  </div>
+                                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Registered / CVAP</p>
+                                    <p className="mt-1 text-lg font-bold text-gray-900">{filteredStats[0].registrationShareOfCvap.toFixed(1)}%</p>
+                                  </div>
+                                  <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 col-span-2">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Ballots / CVAP</p>
+                                    <p className="mt-1 text-lg font-bold text-gray-900">{filteredStats[0].ballotShareOfCvap.toFixed(1)}%</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-500">No matching CVAP row was found for this precinct and year.</p>
+                              )}
                             </div>
 
                             <div className="space-y-4">
@@ -606,7 +1372,9 @@ export default function App() {
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">Precinct</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">CVAP</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. Total</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. / CVAP</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Ballots Cast</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Turnout %</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. REP</th>
@@ -621,7 +1389,9 @@ export default function App() {
                       {filteredStats.map((s, idx) => (
                         <tr key={idx} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4 font-bold text-gray-900 sticky left-0 bg-white group-hover:bg-gray-50">{s.precinct}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{s.cvapTotal > 0 ? s.cvapTotal.toLocaleString() : 'N/A'}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">{s.totalReg.toLocaleString()}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{s.cvapTotal > 0 ? `${s.registrationShareOfCvap.toFixed(1)}%` : 'N/A'}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">{s.totalBallots.toLocaleString()}</td>
                           <td className="px-6 py-4">
                             <span className={cn(
@@ -640,43 +1410,51 @@ export default function App() {
                           <td className="px-6 py-4 text-sm text-gray-600">{(s.turnoutByRace['B'] || 0).toFixed(2)}%</td>
                         </tr>
                       ))}
-                      {processedStats.filter(s => s.year === selectedYear).length > 0 && (
+                      {currentYearStats.length > 0 && (
                         <tr className="bg-blue-50/50 font-bold border-t-2 border-blue-100">
                           <td className="px-6 py-4 text-blue-900 sticky left-0 bg-blue-50/50">ALL UNION COUNTY</td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + s.totalReg, 0).toLocaleString()}
+                            {currentYearStats.reduce((acc, s) => acc + s.cvapTotal, 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + s.totalBallots, 0).toLocaleString()}
+                            {currentYearStats.reduce((acc, s) => acc + s.totalReg, 0).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-blue-900">
+                            {currentYearStats.reduce((acc, s) => acc + s.cvapTotal, 0) > 0
+                              ? `${(currentYearStats.reduce((acc, s) => acc + s.totalReg, 0) / currentYearStats.reduce((acc, s) => acc + s.cvapTotal, 0) * 100).toFixed(2)}%`
+                              : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-blue-900">
+                            {currentYearStats.reduce((acc, s) => acc + s.totalBallots, 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4">
                             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
-                              {(processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + s.totalBallots, 0) / (processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + s.totalReg, 0) || 1) * 100).toFixed(2)}%
+                              {(currentYearStats.reduce((acc, s) => acc + s.totalBallots, 0) / (currentYearStats.reduce((acc, s) => acc + s.totalReg, 0) || 1) * 100).toFixed(2)}%
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + (s.regByParty['REP'] || 0), 0).toLocaleString()}
+                            {currentYearStats.reduce((acc, s) => acc + (s.regByParty['REP'] || 0), 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + (s.regByParty['DEM'] || 0), 0).toLocaleString()}
+                            {currentYearStats.reduce((acc, s) => acc + (s.regByParty['DEM'] || 0), 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + (s.regByParty['UNA'] || 0), 0).toLocaleString()}
+                            {currentYearStats.reduce((acc, s) => acc + (s.regByParty['UNA'] || 0), 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + (s.regByRace['W'] || 0), 0).toLocaleString()}
+                            {currentYearStats.reduce((acc, s) => acc + (s.regByRace['W'] || 0), 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + (s.regByRace['B'] || 0), 0).toLocaleString()}
+                            {currentYearStats.reduce((acc, s) => acc + (s.regByRace['B'] || 0), 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 text-sm text-blue-900">
-                            {(processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + (s.ballotsByRace['B'] || 0), 0) / (processedStats.filter(s => s.year === selectedYear).reduce((acc, s) => acc + (s.regByRace['B'] || 0), 0) || 1) * 100).toFixed(2)}%
+                            {(currentYearStats.reduce((acc, s) => acc + (s.ballotsByRace['B'] || 0), 0) / (currentYearStats.reduce((acc, s) => acc + (s.regByRace['B'] || 0), 0) || 1) * 100).toFixed(2)}%
                           </td>
                         </tr>
                       )}
                       {filteredStats.length === 0 && (
                         <tr>
-                          <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                          <td colSpan={12} className="px-6 py-12 text-center text-gray-500">
                             <div className="flex flex-col items-center gap-2">
                               <Search size={32} className="text-gray-300" />
                               <p className="font-medium">No data available for the selected filters.</p>
@@ -698,69 +1476,22 @@ export default function App() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="max-w-4xl mx-auto space-y-8"
+              className="space-y-8"
             >
-              <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm prose prose-blue max-w-none">
-                <h2 className="text-3xl font-bold text-gray-900 mb-6">Union County Voter Intelligence Dashboard</h2>
-                
-                <section className="space-y-4">
-                  <h3 className="text-xl font-bold text-blue-600">What this application provides</h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    This dashboard is a specialized tool for field organizers in Union County, North Carolina. It synthesizes raw demographic and turnout data to provide actionable intelligence at the precinct level. By comparing registration numbers with actual ballots cast, organizers can identify critical engagement gaps and track shifting political landscapes.
-                  </p>
-                </section>
-
-                <section className="space-y-4 mt-8">
-                  <h3 className="text-xl font-bold text-blue-600">How to upload data</h3>
-                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
-                    <div className="flex gap-4">
-                      <div className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">1</div>
-                      <div>
-                        <p className="font-bold">Download NCSBE Files</p>
-                        <p className="text-sm text-gray-600">Visit the NC State Board of Elections website and download the <code>voter_stats.txt</code> and <code>history_stats.txt</code> files.</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">2</div>
-                      <div>
-                        <p className="font-bold">Upload to Dashboard</p>
-                        <p className="text-sm text-gray-600">Navigate to the "Data Upload" tab and select the respective files. The app will automatically filter for Union County (County Code: UNION).</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">3</div>
-                      <div>
-                        <p className="font-bold">Analyze & Export</p>
-                        <p className="text-sm text-gray-600">Once loaded, switch to the Dashboard tab to filter by year and precinct. Use the Export button to take the data into the field.</p>
-                      </div>
+              <Suspense
+                fallback={
+                  <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-8 w-2/3 bg-gray-200 rounded"></div>
+                      <div className="h-4 w-full bg-gray-100 rounded"></div>
+                      <div className="h-4 w-5/6 bg-gray-100 rounded"></div>
+                      <div className="h-32 w-full bg-gray-50 rounded-xl border border-gray-100"></div>
                     </div>
                   </div>
-                </section>
-
-                <section className="space-y-4 mt-8">
-                  <h3 className="text-xl font-bold text-blue-600">Organizer Interpretation Guide</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="border border-gray-100 p-5 rounded-xl bg-blue-50/30">
-                      <h4 className="font-bold text-blue-900 flex items-center gap-2">
-                        <AlertCircle size={18} />
-                        Identifying Turnout Gaps
-                      </h4>
-                      <p className="text-sm text-gray-700 mt-2">
-                        Look for precincts where "Registration Density" for a specific demographic is high, but "Turnout %" is significantly lower than the county average. These are prime targets for GOTV (Get Out The Vote) operations.
-                      </p>
-                    </div>
-                    <div className="border border-gray-100 p-5 rounded-xl bg-purple-50/30">
-                      <h4 className="font-bold text-purple-900 flex items-center gap-2">
-                        <Users size={18} />
-                        Tracking Unaffiliated Surge
-                      </h4>
-                      <p className="text-sm text-gray-700 mt-2">
-                        Monitor the "Reg. UNA" column across years. A surge in Unaffiliated voters indicates a need for messaging that pivots away from partisan rhetoric toward issue-based canvassing.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-              </div>
+                }
+              >
+                <HowToPanel />
+              </Suspense>
             </motion.div>
           )}
         </AnimatePresence>

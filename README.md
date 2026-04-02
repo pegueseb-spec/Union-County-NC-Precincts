@@ -6,6 +6,8 @@
 
 This project is a Vite + React dashboard for analyzing Union County, NC voter registration, turnout history, and precinct-level patterns from NCSBE source files.
 
+Developed by JBPTV Consultancy Group. This implementation is designed as a reusable template for expansion across all 100 North Carolina counties.
+
 ## What It Does
 
 - Loads built-in Union County precinct election data directly in app memory
@@ -32,6 +34,13 @@ Prerequisites: Node.js 20+
    `npm run test:run`
 3. Build the production bundle:
    `npm run build`
+4. Run the end-to-end share readiness preflight:
+   `npm run release:preflight`
+5. After deploy, open the hosted app and print the latest deploy run details:
+   `npm run release:postdeploy`
+   - Uses `gh` when available
+   - Falls back to GitHub API when `gh` is not installed
+   - Optional auth for API fallback: set `GITHUB_TOKEN` or `GH_TOKEN`
 
 ## Deployment
 
@@ -49,6 +58,11 @@ The Vite base path is configured to use relative asset URLs, so the app can be h
 ## Release Checklist
 
 The share-readiness checklist is documented in `RELEASE.md`.
+You can also open the GitHub issue template at `.github/ISSUE_TEMPLATE/release-checklist.md` for a trackable publish runbook.
+
+## Tutorial
+
+The detailed usage and interpretation tutorial is available in `TUTORIAL.md`.
 
 ## Data Inputs
 

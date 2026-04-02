@@ -4,6 +4,7 @@ Use this checklist before sharing the app with users.
 
 ## Go / No-Go Checks
 
+- Optional one-command preflight: `npm run release:preflight`
 - Install dependencies with `npm ci`.
 - Run `npm run lint` and confirm it passes.
 - Run `npm run test:run` and confirm it passes.
@@ -21,6 +22,9 @@ Use this checklist before sharing the app with users.
 - Verify the repository default branch is `main` or update the workflow branch filter.
 - Confirm demo and template assets exist in `public/data/`.
 - Confirm the local GeoJSON asset exists at `public/data/union-county-precincts.geojson`.
+- Optional tracking: create a release issue using `.github/ISSUE_TEMPLATE/release-checklist.md`.
+- Optional helper: run `npm run release:postdeploy` to open the Pages URL and print the latest deploy run.
+- If `gh` is unavailable, `release:postdeploy` uses GitHub API fallback. Set `GITHUB_TOKEN` or `GH_TOKEN` to avoid API rate limits.
 
 ## Known Gaps
 

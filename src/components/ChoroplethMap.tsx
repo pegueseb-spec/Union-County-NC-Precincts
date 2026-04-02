@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { motion } from 'motion/react';
+import { RotateCcw, XCircle } from 'lucide-react';
 import { PrecinctStats } from '../types';
 import { cn } from '../lib/utils';
 
@@ -12,11 +13,70 @@ interface ChoroplethMapProps {
 
 export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPrecinct, onPrecinctSelect }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<Element, unknown> | null>(null);
   const [geoData, setGeoData] = useState<any>(null);
   const [hoveredInfo, setHoveredInfo] = useState<{ name: string, stats?: PrecinctStats } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOpportunities, setShowOpportunities] = useState(false);
+
+  const normalizePrecinct = (value: unknown) => String(value ?? '').trim().toUpperCase().replace(/^0+/, '');
+  const getFeaturePrecinct = (feature: any) => String(feature?.properties?.prec_id || feature?.properties?.PREC_NAME || feature?.properties?.PRECINCT || '');
+  const selectedKey = normalizePrecinct(selectedPrecinct);
+
+  const sortedPrecincts = useMemo(
+    () => Array.from(new Set(stats.map((s) => s.precinct))).filter(Boolean).sort(),
+    [stats]
+  );
+
+  const statsByPrecinct = useMemo(() => {
+    const map = new Map<string, PrecinctStats>();
+    stats.forEach((s) => {
+      const key = normalizePrecinct(s.precinct);
+      if (key && !map.has(key)) {
+        map.set(key, s);
+      }
+    });
+    return map;
+  }, [stats]);
+
+  const opportunityPrecincts = useMemo(() => {
+    if (stats.length < 3) return new Set<string>();
+
+    const turnoutValues = stats.map((s) => s.turnoutOverall).sort((a, b) => a - b);
+    const registrationValues = stats.map((s) => s.totalReg).sort((a, b) => a - b);
+    const turnoutMedian = turnoutValues[Math.floor(turnoutValues.length / 2)] ?? 0;
+    const registrationMedian = registrationValues[Math.floor(registrationValues.length / 2)] ?? 0;
+
+    const opportunities = stats
+      .filter((s) => s.turnoutOverall <= turnoutMedian && s.totalReg >= registrationMedian)
+      .map((s) => normalizePrecinct(s.precinct));
+
+    return new Set(opportunities);
+  }, [stats]);
+
+  const resetZoom = () => {
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
+    d3.select(svgRef.current)
+      .transition()
+      .duration(250)
+      .call(zoomBehaviorRef.current.transform as any, d3.zoomIdentity);
+  };
+
+  const selectAdjacentPrecinct = (direction: 1 | -1) => {
+    if (sortedPrecincts.length === 0) return;
+
+    if (selectedPrecinct === 'ALL') {
+      onPrecinctSelect(direction === 1 ? sortedPrecincts[0] : sortedPrecincts[sortedPrecincts.length - 1]);
+      return;
+    }
+
+    const currentIndex = sortedPrecincts.findIndex((p) => p === selectedPrecinct);
+    const safeIndex = currentIndex < 0 ? 0 : currentIndex;
+    const nextIndex = (safeIndex + direction + sortedPrecincts.length) % sortedPrecincts.length;
+    onPrecinctSelect(sortedPrecincts[nextIndex]);
+  };
 
   useEffect(() => {
     const fetchGeoData = async () => {
@@ -60,7 +120,10 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
       .domain([0, 100]);
 
-    const g = svg.append('g');
+    const g = svg.append('g').attr('class', 'map-layer');
+
+    const getPrecinctStats = (feature: any) => statsByPrecinct.get(normalizePrecinct(getFeaturePrecinct(feature)));
+    const isFeatureSelected = (feature: any) => normalizePrecinct(getFeaturePrecinct(feature)) === selectedKey;
 
     // Draw precincts
     g.selectAll('path')
@@ -71,23 +134,23 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       .attr('class', 'precinct-path cursor-pointer transition-all duration-200')
       .attr('stroke', '#fff')
       .attr('stroke-width', (d: any) => {
-        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
-        return precinctName === selectedPrecinct ? 3 : 0.5;
+        return isFeatureSelected(d) ? 3 : 0.5;
       })
       .attr('fill', (d: any) => {
-        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
-        const precinctStats = stats.find(s => 
-          s.precinct === precinctName || 
-          s.precinct.replace(/^0+/, '') === precinctName.replace(/^0+/, '')
-        );
-        return precinctStats ? colorScale(precinctStats.turnoutOverall) : '#f3f4f6';
+        const precinctKey = normalizePrecinct(getFeaturePrecinct(d));
+        const precinctStats = getPrecinctStats(d);
+        if (!precinctStats) return '#f3f4f6';
+        if (showOpportunities && opportunityPrecincts.has(precinctKey)) return '#f59e0b';
+        return colorScale(precinctStats.turnoutOverall);
+      })
+      .attr('opacity', (d: any) => {
+        if (!showOpportunities) return 1;
+        const precinctKey = normalizePrecinct(getFeaturePrecinct(d));
+        return opportunityPrecincts.has(precinctKey) ? 1 : 0.35;
       })
       .on('mouseover', (event, d: any) => {
-        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
-        const precinctStats = stats.find(s => 
-          s.precinct === precinctName || 
-          s.precinct.replace(/^0+/, '') === precinctName.replace(/^0+/, '')
-        );
+        const precinctName = getFeaturePrecinct(d);
+        const precinctStats = getPrecinctStats(d);
         
         d3.select(event.currentTarget)
           .attr('stroke', '#3b82f6')
@@ -101,15 +164,33 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         setTooltipPos({ x: event.pageX, y: event.pageY });
       })
       .on('mouseout', (event, d: any) => {
-        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
         d3.select(event.currentTarget)
-          .attr('stroke', precinctName === selectedPrecinct ? '#3b82f6' : '#fff')
-          .attr('stroke-width', precinctName === selectedPrecinct ? 3 : 0.5);
+          .attr('stroke', isFeatureSelected(d) ? '#3b82f6' : '#fff')
+          .attr('stroke-width', isFeatureSelected(d) ? 3 : 0.5);
         setHoveredInfo(null);
       })
       .on('click', (event, d: any) => {
-        const precinctName = d.properties.prec_id || d.properties.PREC_NAME || d.properties.PRECINCT;
-        onPrecinctSelect(precinctName);
+        event.preventDefault();
+
+        const precinctName = getFeaturePrecinct(d);
+        const match = getPrecinctStats(d);
+        onPrecinctSelect(match?.precinct || precinctName);
+
+        if (!svgRef.current || !zoomBehaviorRef.current) return;
+
+        const bounds = path.bounds(d);
+        const dx = bounds[1][0] - bounds[0][0];
+        const dy = bounds[1][1] - bounds[0][1];
+        const x = (bounds[0][0] + bounds[1][0]) / 2;
+        const y = (bounds[0][1] + bounds[1][1]) / 2;
+        const scale = Math.max(1, Math.min(7, 0.8 / Math.max(dx / width, dy / height)));
+        const translate = [width / 2 - scale * x, height / 2 - scale * y];
+
+        const transform = d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale);
+        svg
+          .transition()
+          .duration(300)
+          .call(zoomBehaviorRef.current.transform as any, transform);
       });
 
     // Add zoom
@@ -119,9 +200,10 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         g.attr('transform', event.transform);
       });
 
+    zoomBehaviorRef.current = zoom;
     svg.call(zoom as any);
 
-  }, [geoData, stats, selectedPrecinct]);
+  }, [geoData, opportunityPrecincts, selectedKey, showOpportunities, statsByPrecinct]);
 
   if (isLoading) {
     return (
@@ -142,7 +224,27 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
   }
 
   return (
-    <div className="relative bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div
+      className="relative bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-300"
+      tabIndex={0}
+      role="group"
+      aria-label="Interactive precinct map"
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          selectAdjacentPrecinct(1);
+        }
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          selectAdjacentPrecinct(-1);
+        }
+        if (event.key.toLowerCase() === 'escape') {
+          event.preventDefault();
+          onPrecinctSelect('ALL');
+          resetZoom();
+        }
+      }}
+    >
       <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur p-3 rounded-lg border border-gray-200 shadow-sm">
         <h4 className="text-sm font-bold text-gray-900 mb-2">Turnout Legend</h4>
         <div className="flex items-center gap-2 mb-1">
@@ -157,6 +259,57 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
           <div className="w-4 h-4 bg-[#081d58]"></div>
           <span className="text-xs text-gray-600">100%</span>
         </div>
+
+        <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+          <button
+            onClick={() => setShowOpportunities((value) => !value)}
+            className={cn(
+              'w-full px-2 py-1.5 rounded-md text-xs font-semibold transition-colors',
+              showOpportunities ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            )}
+          >
+            {showOpportunities ? 'Opportunity Mode: ON' : 'Opportunity Mode: OFF'}
+          </button>
+          <button
+            onClick={resetZoom}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 px-2 py-1.5 rounded-md text-xs font-semibold transition-colors',
+              'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            )}
+          >
+            <RotateCcw size={14} />
+            Reset map view
+          </button>
+          <button
+            onClick={() => onPrecinctSelect('ALL')}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 px-2 py-1.5 rounded-md text-xs font-semibold transition-colors',
+              selectedPrecinct === 'ALL' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+            )}
+            disabled={selectedPrecinct === 'ALL'}
+          >
+            <XCircle size={14} />
+            Clear precinct selection
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => selectAdjacentPrecinct(-1)}
+              className="px-2 py-1.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+            >
+              Prev precinct
+            </button>
+            <button
+              onClick={() => selectAdjacentPrecinct(1)}
+              className="px-2 py-1.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+            >
+              Next precinct
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur px-3 py-2 rounded-lg border border-gray-200 shadow-sm text-xs text-gray-600">
+        {selectedPrecinct === 'ALL' ? 'Tip: click a precinct to focus insights.' : `Selected: ${selectedPrecinct}`}
       </div>
 
       <svg 

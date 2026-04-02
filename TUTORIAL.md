@@ -1,0 +1,146 @@
+# Union County Voter Intelligence Dashboard Tutorial
+
+This tutorial helps campaign, civic, and research teams get the strongest practical insight from the dashboard data.
+
+## Product Context
+
+Developer: JBPTV Consultancy Group  
+Concept owner: JBPTV Consultancy Group  
+Expansion vision: Scale this framework from Union County to all 100 North Carolina counties.
+
+## Outcomes You Should Expect
+
+- Faster identification of low-turnout opportunity precincts
+- Better segmentation by party, race, and sex mix
+- Repeatable weekly reporting workflow for field operations
+- Shareable exports for canvassing, phones, mail, and digital teams
+
+## Data Model Overview
+
+The dashboard combines three datasets:
+
+1. Voter registration file
+- Primary signal: who is currently registered
+- Key fields used: county, precinct, party, race, sex, total voters
+
+2. Voter history file
+- Primary signal: who actually voted
+- Key fields used: county, precinct, election date, party, race, sex, total voters
+
+3. CVAP file (optional but strongly recommended)
+- Primary signal: citizen voting age population baseline
+- Key fields used: precinct, cvap total, optional year, optional county
+
+## How The Core Metrics Work
+
+1. Total Registered
+- Sum of registration counts in precinct-year slice
+
+2. Total Ballots
+- Sum of history counts in precinct-year slice
+
+3. Turnout %
+- Formula: ballots / registered x 100
+
+4. Registered / CVAP %
+- Formula: registered / cvap x 100
+- Useful for understanding registration saturation
+
+5. Ballots / CVAP %
+- Formula: ballots / cvap x 100
+- Useful for understanding effective mobilization of total eligible citizens
+
+## Recommended Operating Workflow
+
+### Step 1: Baseline countywide scan
+
+1. Go to Dashboard
+2. Set the election year
+3. Keep precinct filter at All
+4. Note countywide turnout and registration volume
+
+### Step 2: Geo discovery with map
+
+1. Hover map precincts to inspect turnout and volume
+2. Click a precinct to lock it as active and auto-zoom into the area
+3. Use Opportunity Mode to emphasize high-registration, lower-turnout target precincts
+4. Use Prev precinct / Next precinct buttons or keyboard arrows to scan quickly
+5. Use the side panel to inspect detailed breakdowns
+6. Press Escape to clear selection and reset map focus
+7. Use Clear precinct selection to return to countywide mode
+8. Use Reset map view if pan/zoom drifts too far
+
+### Step 3: Identify field priority precincts
+
+Prioritize precincts where:
+
+- Registration is high but turnout is low
+- Ballots/CVAP is meaningfully below neighboring precincts
+- One segment (party or race) has unusually weak turnout relative to registration share
+
+### Step 4: Build action categories
+
+For each priority precinct, assign one dominant strategy:
+
+1. Registration growth
+- Use when Registered/CVAP is low
+
+2. Persuasion
+- Use when registration is healthy but turnout remains low
+
+3. GOTV chase
+- Use when likely support exists but conversion is inconsistent
+
+4. Election day logistics
+- Use when turnout volatility suggests access or process friction
+
+### Step 5: Export and share
+
+1. Export Summary CSV for countywide reporting
+2. Export precinct-specific CSV from Precinct Insights
+3. Attach action notes and owner assignments in your field plan
+
+## Weekly Insight Cadence (Suggested)
+
+1. Monday: refresh source files and load current dataset
+2. Tuesday: run countywide scan and map triage
+3. Wednesday: precinct-level targeting decisions
+4. Thursday: field deployment and message testing
+5. Friday: export report and update stakeholder summary
+
+## Data Quality Checks
+
+Before relying on outputs:
+
+1. Verify upload summaries show usable rows > 0
+2. If CVAP match is low, export CVAP issue rows and clean inputs
+3. Confirm precinct naming consistency (leading zeros, abbreviations)
+4. Verify selected year aligns with intended election cycle
+
+## Interpretation Tips For Better Decisions
+
+1. Do not evaluate turnout in isolation
+- Always compare turnout with both registration and CVAP context
+
+2. Watch trend direction, not only single values
+- Rising registration with flat turnout can signal weak mobilization
+
+3. Compare peers
+- Similar precincts with different turnout usually reveal actionable operational differences
+
+4. Treat small counts carefully
+- Very small precinct totals can create noisy percentages
+
+## Expansion Playbook For 100 Counties
+
+To replicate statewide:
+
+1. Swap in county-specific voter/history/CVAP and precinct GeoJSON
+2. Keep the same normalization and metric framework
+3. Validate precinct key mapping per county before launch
+4. Reuse this UX pattern for operator consistency
+5. Maintain a county-by-county release checklist and QA signoff
+
+## Attribution
+
+This tool was developed by JBPTV Consultancy Group and is positioned as a reusable intelligence template for county-level expansion across North Carolina.

@@ -826,6 +826,7 @@ export default function App() {
               <div>
                 <h1 className="text-xl font-bold tracking-tight">Union County Voter Intelligence</h1>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Field Organizer Dashboard</p>
+                <p className="text-[11px] text-gray-500">Developed by JBPTV Consultancy Group. Blueprint for expansion across all 100 NC counties.</p>
               </div>
             </div>
             

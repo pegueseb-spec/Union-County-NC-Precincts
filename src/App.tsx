@@ -42,7 +42,75 @@ const CVAP_PRECINCT_KEYS = ['precinct_abbrv', 'precinct', 'precinct_name', 'prec
 const CVAP_YEAR_KEYS = ['year', 'election_year', 'cvap_year', 'analysis_year'];
 const CVAP_TOTAL_KEYS = ['cvap_total', 'cvap', 'citizen_voting_age_population', 'citizen voting age population', 'total_cvap'];
 const COUNTY_KEYS = ['county_desc', 'county', 'county_name', 'county_nam'];
+const MAX_UPLOAD_FILE_BYTES = 20 * 1024 * 1024;
+const FILE_UPLOAD_PATTERN = /\.(txt|csv)$/i;
+const ASSET_FETCH_TIMEOUT_MS = 15000;
 const getPublicAssetPath = (relativePath: string) => `${import.meta.env.BASE_URL}${relativePath.replace(/^\/+/, '')}`;
+
+const sanitizeDownloadFilename = (value: string) => {
+  const normalized = value.replace(/\.csv$/i, '').replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '');
+  return `${normalized || 'export'}.csv`;
+};
+
+const exportCsvFile = (rows: unknown[], filename: string) => {
+  const csv = Papa.unparse(rows as any[]);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', sanitizeDownloadFilename(filename));
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+const validateUploadFile = (file: File) => {
+  if (!FILE_UPLOAD_PATTERN.test(file.name)) {
+    return 'Only .txt and .csv files are accepted.';
+  }
+
+  if (file.size <= 0) {
+    return 'The selected file is empty.';
+  }
+
+  if (file.size > MAX_UPLOAD_FILE_BYTES) {
+    return `The selected file exceeds the ${Math.round(MAX_UPLOAD_FILE_BYTES / (1024 * 1024))} MB upload limit.`;
+  }
+
+  return null;
+};
+
+const fetchJsonAsset = async <T,>(relativePath: string): Promise<T> => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), ASSET_FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(getPublicAssetPath(relativePath), {
+      signal: controller.signal,
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to load ${relativePath} (HTTP ${response.status})`);
+    }
+
+    return await response.json() as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(`Timed out loading ${relativePath}.`);
+    }
+
+    throw err instanceof Error ? err : new Error(`Failed to load ${relativePath}.`);
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
 
 const normalizeKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -264,6 +332,14 @@ export default function App() {
   const handleFileUpload = (type: 'voter' | 'history' | 'cvap', file: File) => {
     setIsProcessing(true);
     setError(null);
+
+    const fileValidationError = validateUploadFile(file);
+    if (fileValidationError) {
+      setError(`${type.toUpperCase()} upload rejected: ${fileValidationError}`);
+      setIsProcessing(false);
+      return;
+    }
+
     if (type === 'voter') {
       setVoterUploadSummary(null);
       setVoterDroppedRows([]);
@@ -280,6 +356,7 @@ export default function App() {
       header: true,
       skipEmptyLines: true,
       dynamicTyping: true,
+      worker: true,
       complete: (results: ParseResult<Record<string, unknown>>) => {
         const data = results.data as Record<string, unknown>[];
 
@@ -639,17 +716,7 @@ export default function App() {
       return;
     }
 
-    const csv = Papa.unparse(rows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'cvap-issue-rows.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportCsvFile(rows, 'cvap-issue-rows.csv');
   };
 
   const exportVoterIssueRows = () => {
@@ -667,17 +734,7 @@ export default function App() {
       Sex: String(getRowValue(row.row, ['sex_code', 'sex', 'gender']) || ''),
     }));
 
-    const csv = Papa.unparse(rows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'voter-issue-rows.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportCsvFile(rows, 'voter-issue-rows.csv');
   };
 
   const exportHistoryIssueRows = () => {
@@ -696,17 +753,7 @@ export default function App() {
       Sex: String(getRowValue(row.row, ['sex_code', 'sex', 'gender']) || ''),
     }));
 
-    const csv = Papa.unparse(rows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'history-issue-rows.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportCsvFile(rows, 'history-issue-rows.csv');
   };
 
   const loadBundledData = async ({ activateDashboard = true, silent = false }: { activateDashboard?: boolean; silent?: boolean } = {}) => {  // eslint-disable-line react-hooks/exhaustive-deps
@@ -715,15 +762,13 @@ export default function App() {
 
     try {
       const [voterJson, historyJson] = await Promise.all([
-        fetch(getPublicAssetPath('data/union_voter_stats.json')).then(r => {
-          if (!r.ok) throw new Error(`Failed to load voter data (HTTP ${r.status})`);
-          return r.json() as Promise<Record<string, unknown>[]>;
-        }),
-        fetch(getPublicAssetPath('data/union_history_stats.json')).then(r => {
-          if (!r.ok) throw new Error(`Failed to load history data (HTTP ${r.status})`);
-          return r.json() as Promise<Record<string, unknown>[]>;
-        }),
+        fetchJsonAsset<Record<string, unknown>[]>('data/union_voter_stats.json'),
+        fetchJsonAsset<Record<string, unknown>[]>('data/union_history_stats.json'),
       ]);
+
+      if (!Array.isArray(voterJson) || !Array.isArray(historyJson)) {
+        throw new Error('Built-in data files are not in the expected array format.');
+      }
 
       const normalizedVoter = voterJson.map(normalizeVoterRecord).filter((r): r is VoterRecord => r !== null);
       const normalizedHistory = historyJson.map(normalizeHistoryRecord).filter((r): r is HistoryRecord => r !== null);
@@ -799,18 +844,7 @@ export default function App() {
       ...Object.fromEntries(RACE_CODES.map(r => [`Density ${r} %`, (s.densityByRace[r] || 0).toFixed(2)])),
     }));
 
-    const csv = Papa.unparse(rows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Union_County_Analysis_${selectedYear}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportCsvFile(rows, `Union_County_Analysis_${selectedYear}.csv`);
   };
 
   return (
@@ -1207,17 +1241,7 @@ export default function App() {
                                     ...PARTY_CODES.map(p => ({ Metric: `Turnout Party ${p} %`, Value: (s.turnoutByParty[p] || 0).toFixed(2) })),
                                     ...RACE_CODES.map(r => ({ Metric: `Density Race ${r} %`, Value: (s.densityByRace[r] || 0).toFixed(2) })),
                                   ];
-                                  const csv = Papa.unparse(data);
-                                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                                  const link = document.createElement('a');
-                                  const url = URL.createObjectURL(blob);
-                                  link.setAttribute('href', url);
-                                  link.setAttribute('download', `Precinct_${s.precinct}_${s.year}_Stats.csv`);
-                                  link.style.visibility = 'hidden';
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                  URL.revokeObjectURL(url);
+                                  exportCsvFile(data, `Precinct_${s.precinct}_${s.year}_Stats.csv`);
                                 }}
                                 disabled={isProcessing}
                                 className={cn(

@@ -25,6 +25,8 @@ Use this checklist before sharing the app with users.
 - Optional tracking: create a release issue using `.github/ISSUE_TEMPLATE/release-checklist.md`.
 - Optional helper: run `npm run release:postdeploy` to open the Pages URL and print the latest deploy run.
 - If `gh` is unavailable, `release:postdeploy` uses GitHub API fallback. Set `GITHUB_TOKEN` or `GH_TOKEN` to avoid API rate limits.
+- Verify upload validation rejects non-CSV/TXT files and oversized files.
+- Verify the app shell still loads correctly with the CSP defined in `index.html`.
 
 ## Known Gaps
 

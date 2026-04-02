@@ -20,6 +20,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOpportunities, setShowOpportunities] = useState(false);
+  const mapFetchTimeoutMs = 15000;
 
   const normalizePrecinct = (value: unknown) => String(value ?? '').trim().toUpperCase().replace(/^0+/, '');
   const getFeaturePrecinct = (feature: any) => String(feature?.properties?.prec_id || feature?.properties?.PREC_NAME || feature?.properties?.PRECINCT || '');
@@ -80,13 +81,22 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
 
   useEffect(() => {
     const fetchGeoData = async () => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), mapFetchTimeoutMs);
+
       try {
         setIsLoading(true);
-        const response = await fetch(`${import.meta.env.BASE_URL}data/union-county-precincts.geojson`);
+        const response = await fetch(`${import.meta.env.BASE_URL}data/union-county-precincts.geojson`, {
+          signal: controller.signal,
+          cache: 'no-store',
+          headers: {
+            Accept: 'application/geo+json, application/json',
+          },
+        });
         if (!response.ok) throw new Error('Failed to fetch GeoJSON');
         const data = await response.json();
 
-        if (!data.features || data.features.length === 0) {
+        if (!data || !Array.isArray(data.features) || data.features.length === 0) {
           throw new Error('No precincts found for Union County in GeoJSON');
         }
 
@@ -94,8 +104,14 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         setIsLoading(false);
       } catch (err) {
         console.error('Error loading map data:', err);
-        setError('Could not load the local Union County precinct map data.');
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          setError('Map request timed out while loading local Union County precinct boundaries.');
+        } else {
+          setError('Could not load the local Union County precinct map data.');
+        }
         setIsLoading(false);
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     };
 

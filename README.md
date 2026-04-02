@@ -92,3 +92,10 @@ Built-in source files:
 
 - The precinct map is now served from the vendored local GeoJSON asset at `public/data/union-county-precincts.geojson`.
 - Production builds on locked-down Windows environments may fail if Rollup native binaries are blocked by local application control policy.
+
+## Security Hardening
+
+- The app uses a restrictive browser-side Content Security Policy in `index.html` appropriate for a static GitHub Pages deployment.
+- File uploads are limited to `.txt` and `.csv` with a 20 MB client-side size guard.
+- Built-in asset fetches use request timeouts and validate expected JSON array/object shapes before processing.
+- CSV exports use sanitized filenames to avoid unsafe characters in generated downloads.

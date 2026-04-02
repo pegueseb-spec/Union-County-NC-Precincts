@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -68,5 +68,20 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText(/how-to panel content/i)).toBeInTheDocument();
     });
+  });
+
+  it('rejects unsupported upload file types', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText(/turnout choropleth map/i);
+    await user.click(screen.getByRole('button', { name: /data upload/i }));
+
+    const fileInputs = await screen.findAllByLabelText(/select file/i);
+    const invalidFile = new File(['malformed'], 'payload.exe', { type: 'application/octet-stream' });
+
+    fireEvent.change(fileInputs[0], { target: { files: [invalidFile] } });
+
+    expect(await screen.findByText(/upload rejected: only .txt and .csv files are accepted/i)).toBeInTheDocument();
   });
 });

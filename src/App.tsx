@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import Papa, { ParseError, ParseResult } from 'papaparse';
 import { 
   BarChart3, 
@@ -709,9 +709,9 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const loadDemoData = async () => {
+  const loadBundledData = async ({ activateDashboard = true, silent = false }: { activateDashboard?: boolean; silent?: boolean } = {}) => {
     setIsProcessing(true);
-    setError(null);
+    if (!silent) setError(null);
 
     try {
       const [voterResponse, historyResponse, cvapResponse] = await Promise.all([
@@ -824,13 +824,19 @@ export default function App() {
         usableRows: normalizedCvap.length,
         droppedRows: Math.max(parsedCvap.length - normalizedCvap.length, 0),
       });
-      setActiveTab('dashboard');
+      if (activateDashboard) {
+        setActiveTab('dashboard');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load demo data.');
+      setError(err instanceof Error ? err.message : 'Failed to load bundled data.');
     } finally {
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    void loadBundledData({ activateDashboard: true, silent: true });
+  }, []);
 
   const avgRegistrationShareOfCvap = useMemo(() => {
     const totalCvap = filteredStats.reduce((acc, s) => acc + s.cvapTotal, 0);
@@ -923,14 +929,14 @@ export default function App() {
             >
               <div className="flex justify-end">
                 <button
-                  onClick={loadDemoData}
+                  onClick={() => loadBundledData({ activateDashboard: true })}
                   disabled={isProcessing}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
                     isProcessing ? "bg-gray-400 text-white cursor-not-allowed" : "bg-gray-800 text-white hover:bg-gray-900"
                   )}
                 >
-                  {isProcessing ? 'Loading Demo...' : 'Load Demo Dataset'}
+                  {isProcessing ? 'Loading Data...' : 'Reload Built-In Dataset'}
                 </button>
               </div>
 
@@ -942,7 +948,7 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold">Voter Registration</h3>
-                      <p className="text-sm text-gray-500 mt-1">Upload voter_stats.txt from NCSBE</p>
+                      <p className="text-sm text-gray-500 mt-1">Built-in data is preloaded. Upload voter_stats.txt only if you want to replace it.</p>
                     </div>
                     <label className="cursor-pointer bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
                       Select File
@@ -964,7 +970,7 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold">Voter History</h3>
-                      <p className="text-sm text-gray-500 mt-1">Upload history_stats.txt from NCSBE</p>
+                      <p className="text-sm text-gray-500 mt-1">Built-in data is preloaded. Upload history_stats.txt only if you want to replace it.</p>
                     </div>
                     <label className="cursor-pointer bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors">
                       Select File
@@ -986,7 +992,7 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold">Census CVAP</h3>
-                      <p className="text-sm text-gray-500 mt-1">Upload precinct CVAP data with precinct and total columns</p>
+                      <p className="text-sm text-gray-500 mt-1">Built-in data is preloaded. Upload CVAP only if you want to replace it.</p>
                     </div>
                     <label className="cursor-pointer bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors">
                       Select File

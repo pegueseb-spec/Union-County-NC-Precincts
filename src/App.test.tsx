@@ -47,17 +47,14 @@ describe('App', () => {
   it('renders the upload screen by default', () => {
     render(<App />);
 
-    expect(screen.getByRole('button', { name: /load demo dataset/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /loading data|reload built-in dataset/i })).toBeInTheDocument();
     expect(screen.getByText(/voter registration/i)).toBeInTheDocument();
     expect(screen.getByText(/voter history/i)).toBeInTheDocument();
     expect(screen.getByText(/census cvap/i)).toBeInTheDocument();
   });
 
-  it('loads demo data and opens the dashboard', async () => {
-    const user = userEvent.setup();
+  it('auto-loads built-in data and opens the dashboard', async () => {
     render(<App />);
-
-    await user.click(screen.getByRole('button', { name: /load demo dataset/i }));
 
     await screen.findByText(/turnout choropleth map/i);
     expect(screen.getByLabelText(/election year/i)).toBeInTheDocument();

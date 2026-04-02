@@ -1,0 +1,5 @@
+{
+  "name": "Union County Voter Intelligence Dashboard",
+  "description": "A comprehensive precinct analysis tool for field organizers in Union County, NC, processing NCSBE voter registration and history data.",
+  "requestFramePermissions": []
+}

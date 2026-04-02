@@ -1,27 +1,32 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
+build/
 coverage/
 
+# OS
 .DS_Store
 Thumbs.db
 
+# Environment
 .env
 .env.local
 .env.*.local
+.env*
+!.env.example
 
+# Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Vite / tooling
 .vite/
 vitest.config.ts.timestamp-*
-tmp/node_modules/
-build/
-dist/
-coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
+
+# Temp download staging area (used by refresh script)
+tmp/

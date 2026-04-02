@@ -709,27 +709,39 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const loadBundledData = async ({ activateDashboard = true, silent = false }: { activateDashboard?: boolean; silent?: boolean } = {}) => {
+  const loadBundledData = async ({ activateDashboard = true, silent = false }: { activateDashboard?: boolean; silent?: boolean } = {}) => {  // eslint-disable-line react-hooks/exhaustive-deps
     setIsProcessing(true);
     if (!silent) setError(null);
 
     try {
-      const { BUILT_IN_CVAP_DATA, BUILT_IN_HISTORY_DATA, BUILT_IN_VOTER_DATA } = await import('./data/unionCountyBuiltInData');
+      const [voterJson, historyJson] = await Promise.all([
+        fetch(getPublicAssetPath('data/union_voter_stats.json')).then(r => {
+          if (!r.ok) throw new Error(`Failed to load voter data (HTTP ${r.status})`);
+          return r.json() as Promise<Record<string, unknown>[]>;
+        }),
+        fetch(getPublicAssetPath('data/union_history_stats.json')).then(r => {
+          if (!r.ok) throw new Error(`Failed to load history data (HTTP ${r.status})`);
+          return r.json() as Promise<Record<string, unknown>[]>;
+        }),
+      ]);
 
-      setVoterData(BUILT_IN_VOTER_DATA);
+      const normalizedVoter = voterJson.map(normalizeVoterRecord).filter((r): r is VoterRecord => r !== null);
+      const normalizedHistory = historyJson.map(normalizeHistoryRecord).filter((r): r is HistoryRecord => r !== null);
+
+      setVoterData(normalizedVoter);
       setVoterDroppedRows([]);
       setVoterUploadSummary({
-        parsedRows: BUILT_IN_VOTER_DATA.length,
-        usableRows: BUILT_IN_VOTER_DATA.length,
-        droppedRows: 0,
+        parsedRows: voterJson.length,
+        usableRows: normalizedVoter.length,
+        droppedRows: voterJson.length - normalizedVoter.length,
       });
 
-      setHistoryData(BUILT_IN_HISTORY_DATA);
+      setHistoryData(normalizedHistory);
       setHistoryDroppedRows([]);
       setHistoryUploadSummary({
-        parsedRows: BUILT_IN_HISTORY_DATA.length,
-        usableRows: BUILT_IN_HISTORY_DATA.length,
-        droppedRows: 0,
+        parsedRows: historyJson.length,
+        usableRows: normalizedHistory.length,
+        droppedRows: historyJson.length - normalizedHistory.length,
       });
 
       const headers = ['county_desc', 'year', 'precinct_abbrv', 'cvap_total'];
@@ -743,11 +755,11 @@ export default function App() {
         },
       });
 
-      setCvapData(BUILT_IN_CVAP_DATA);
+      setCvapData([]);
       setCvapDroppedRows([]);
       setCvapUploadSummary({
-        parsedRows: BUILT_IN_CVAP_DATA.length,
-        usableRows: BUILT_IN_CVAP_DATA.length,
+        parsedRows: 0,
+        usableRows: 0,
         droppedRows: 0,
       });
       if (activateDashboard) {

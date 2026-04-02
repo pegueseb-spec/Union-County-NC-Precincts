@@ -109,40 +109,44 @@ foreach ($election in $elections) {
   Write-Host "Loaded official election data for $year ($dateFolder)."
 }
 
-# CVAP is not published by NCSBE at precinct-level election stats endpoints.
-$cvapRows = @()
+# ─── Write JSON files to public/data/ ────────────────────────────────────────
+# Data is served as static JSON so the TypeScript source stays small.
+$publicDataDir = Join-Path $PSScriptRoot '..\public\data'
+if (-not (Test-Path $publicDataDir)) { New-Item -ItemType Directory -Path $publicDataDir | Out-Null }
 
-$generatedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-$sources = $elections | ForEach-Object { "https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/$($_.Date)/" }
-
-$voterJson = $voterRows | ConvertTo-Json -Depth 6
+$voterJson  = $voterRows   | ConvertTo-Json -Depth 6
 $historyJson = $historyRows | ConvertTo-Json -Depth 6
-$cvapJson = $cvapRows | ConvertTo-Json -Depth 3
-if ([string]::IsNullOrWhiteSpace($cvapJson)) { $cvapJson = '[]' }
-$sourceJson = $sources | ConvertTo-Json -Depth 3
+if ([string]::IsNullOrWhiteSpace($voterJson))   { $voterJson   = '[]' }
+if ([string]::IsNullOrWhiteSpace($historyJson)) { $historyJson = '[]' }
 
-$content = @"
-import { CVAPRecord, HistoryRecord, VoterRecord } from '../types';
+Set-Content -Path (Join-Path $publicDataDir 'union_voter_stats.json')   -Value $voterJson   -Encoding UTF8
+Set-Content -Path (Join-Path $publicDataDir 'union_history_stats.json') -Value $historyJson -Encoding UTF8
 
-// Generated from official NCSBE ENRS voter/history stats files for Union County.
-// Refresh command: powershell -ExecutionPolicy Bypass -File scripts/refresh_union_county_builtin_data.ps1
+# ─── Update the TS metadata stub ─────────────────────────────────────────────
+$generatedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+$sourceJson  = ($elections | ForEach-Object { "  'https://s3.amazonaws.com/dl.ncsbe.gov/ENRS/$($_.Date)/'," }) -join "`n"
+
+$tsStub = @"
+// ─── Built-in data metadata ──────────────────────────────────────────────────
+// The actual data is served as static JSON from public/data/.
+// See scripts/refresh_union_county_builtin_data.ps1 to regenerate.
 export const BUILT_IN_DATA_METADATA = {
   generatedAtUtc: '$generatedAt',
   source: 'NCSBE ENRS official files',
   electionsIncluded: [2020, 2021, 2022, 2023, 2024, 2025],
   cvapIncluded: false,
-  sourceUrls: $sourceJson,
+  voterStatsUrl: 'data/union_voter_stats.json',
+  historyStatsUrl: 'data/union_history_stats.json',
+  sourceUrls: [
+$sourceJson
+  ],
 } as const;
-
-export const BUILT_IN_VOTER_DATA: VoterRecord[] = $voterJson;
-
-export const BUILT_IN_HISTORY_DATA: HistoryRecord[] = $historyJson;
-
-export const BUILT_IN_CVAP_DATA: CVAPRecord[] = $cvapJson;
 "@
 
-$outFile = Join-Path $PSScriptRoot '..\src\data\unionCountyBuiltInData.ts'
-Set-Content -Path $outFile -Value $content -Encoding UTF8
+$tsOut = Join-Path $PSScriptRoot '..\src\data\unionCountyBuiltInData.ts'
+Set-Content -Path $tsOut -Value $tsStub -Encoding UTF8
 
-Write-Host "Wrote $outFile"
-Write-Host "Rows: voter=$($voterRows.Count), history=$($historyRows.Count), cvap=$($cvapRows.Count)"
+Write-Host "Wrote $publicDataDir\union_voter_stats.json"
+Write-Host "Wrote $publicDataDir\union_history_stats.json"
+Write-Host "Updated $tsOut"
+Write-Host "Rows: voter=$($voterRows.Count), history=$($historyRows.Count)"

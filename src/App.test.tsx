@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 vi.mock('./components/ChoroplethMap', () => ({
@@ -11,8 +11,32 @@ vi.mock('./components/HowToPanel', () => ({
   HowToPanel: () => <div>How-To Panel Content</div>,
 }));
 
+// Minimal NCSBE rows that pass normalizeVoterRecord / normalizeHistoryRecord
+const MOCK_VOTER_ROW = {
+  county_desc: 'UNION', precinct_abbrv: '01', party_cd: 'REP',
+  race_code: 'W', ethnic_code: 'NL', sex_code: 'M', total_voters: 10,
+  election_date: '2024-11-05', stats_type: 'A', age: 'Age 26 - 40', update_date: '2024-11-25',
+};
+const MOCK_HISTORY_ROW = {
+  county_desc: 'UNION', precinct_abbrv: '01', party_cd: 'REP',
+  race_code: 'W', ethnic_code: 'NL', sex_code: 'M', total_voters: 8,
+  election_date: '2024-11-05', voting_method: 'EV', voted_party_cd: 'REP',
+  stats_type: 'history', age: 'Age 26 - 40', update_date: '2024-11-25',
+};
+
 describe('App', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      const body = url.includes('union_voter_stats') ? [MOCK_VOTER_ROW]
+        : url.includes('union_history_stats') ? [MOCK_HISTORY_ROW]
+        : null;
+      if (!body) return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    }));
+  });
+
   afterEach(() => {
+    vi.unstubAllGlobals();
     cleanup();
   });
 

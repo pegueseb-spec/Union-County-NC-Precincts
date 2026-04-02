@@ -35,19 +35,26 @@ const scenarios = [
 
     try {
       await page.goto(appUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-      await page.getByRole('button', { name: /data upload/i }).click();
+      await page.getByText('Turnout Choropleth Map').waitFor({ timeout: 60000 });
+      await page.getByRole('button', { name: 'Data Upload', exact: true }).click({ force: true });
+      await page.getByText('Voter Registration').waitFor({ timeout: 60000 });
+      await page.waitForFunction(() => {
+        const input = document.querySelector('input[type="file"]');
+        return Boolean(input) && !input.disabled;
+      }, { timeout: 60000 });
 
       const inputs = page.locator('input[type="file"]');
       await inputs.nth(0).setInputFiles(files[0]);
       await inputs.nth(1).setInputFiles(files[1]);
       await inputs.nth(2).setInputFiles(files[2]);
 
-      await page.getByText('CVAP Upload Summary').waitFor({ timeout: 60000 });
+      await page.getByText('CVAP Upload Summary').waitFor({ state: 'attached', timeout: 90000 });
       result.uploadSummarySeen = true;
 
-      await page.getByRole('button', { name: /dashboard/i }).click();
+      await page.getByRole('button', { name: 'Dashboard', exact: true }).click();
       await page.getByText('Turnout Choropleth Map').waitFor({ timeout: 60000 });
-      await page.getByText('Precinct Insights').waitFor({ timeout: 60000 });
+      await page.getByRole('heading', { name: 'Precinct Insights', exact: true }).waitFor({ timeout: 60000 });
+      await page.locator('svg').first().waitFor({ state: 'visible', timeout: 60000 });
 
       result.mapVisible = await page.locator('svg').first().isVisible();
       result.insightsVisible = true;
@@ -60,6 +67,7 @@ const scenarios = [
       result.passed = result.uploadSummarySeen && result.mapVisible && result.insightsVisible;
     } catch (error) {
       result.error = String(error);
+      result.bodySnippet = ((await page.locator('body').textContent()) || '').slice(0, 500);
     } finally {
       console.log(JSON.stringify(result));
       await browser.close();

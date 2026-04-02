@@ -8,7 +8,7 @@ This project is a Vite + React dashboard for analyzing Union County, NC voter re
 
 ## What It Does
 
-- Uploads voter registration and election history data exports
+- Loads built-in Union County precinct election data directly in app memory
 - Filters records to Union County precincts
 - Computes registration, ballot, turnout, and density summaries
 - Displays precinct-level stats and a choropleth map
@@ -52,9 +52,8 @@ The share-readiness checklist is documented in `RELEASE.md`.
 
 ## Data Inputs
 
-- Voter registration: aggregated NCSBE voter stats export
-- Election history: aggregated NCSBE history stats export
-- CVAP: precinct-level CVAP file with precinct and total CVAP columns; year is optional
+- Built-in memory dataset includes voter, history, and CVAP rows across all Union County precinct IDs in the local map data.
+- Uploads are optional and override the in-memory dataset when you provide files.
 
 Upload diagnostics:
 - CVAP upload summary includes parsed, usable, dropped, and matched-to-analysis row counts
@@ -69,11 +68,11 @@ Accepted CVAP columns (aliases supported):
 Template file:
 - public/data/cvap-template.csv
 
-Demo files:
+Built-in source files:
 - public/data/demo-voter.csv
 - public/data/demo-history.csv
 - public/data/demo-cvap.csv
-- Use the `Load Demo Dataset` button on the upload screen to populate all three at once
+- The upload screen provides a `Reload Built-In Dataset` action to restore these defaults in memory
 
 ## Notes
 

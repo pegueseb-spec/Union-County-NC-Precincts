@@ -714,72 +714,25 @@ export default function App() {
     if (!silent) setError(null);
 
     try {
-      const [voterResponse, historyResponse, cvapResponse] = await Promise.all([
-        fetch(getPublicAssetPath('data/demo-voter.csv')),
-        fetch(getPublicAssetPath('data/demo-history.csv')),
-        fetch(getPublicAssetPath('data/demo-cvap.csv')),
-      ]);
+      const { BUILT_IN_CVAP_DATA, BUILT_IN_HISTORY_DATA, BUILT_IN_VOTER_DATA } = await import('./data/unionCountyBuiltInData');
 
-      if (!voterResponse.ok || !historyResponse.ok || !cvapResponse.ok) {
-        throw new Error('Could not load one or more demo data files.');
-      }
-
-      const [voterText, historyText, cvapText] = await Promise.all([
-        voterResponse.text(),
-        historyResponse.text(),
-        cvapResponse.text(),
-      ]);
-
-      const parsedVoter = Papa.parse<Record<string, unknown>>(voterText, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-      }).data;
-
-      const parsedHistory = Papa.parse<Record<string, unknown>>(historyText, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-      }).data;
-
-      const parsedCvap = Papa.parse<Record<string, unknown>>(cvapText, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-      }).data;
-
-      setVoterData(
-        parsedVoter
-          .map(normalizeVoterRecord)
-          .filter((record: VoterRecord | null): record is VoterRecord => record !== null)
-      );
-      const demoVoterDropped = parsedVoter
-        .map((row: Record<string, unknown>, index: number) => normalizeVoterRecord(row) ? null : ({ rowNumber: index + 2, reason: getVoterDropReason(row), row }))
-        .filter((row: { rowNumber: number; reason: string; row: Record<string, unknown> } | null): row is { rowNumber: number; reason: string; row: Record<string, unknown> } => row !== null);
-      setVoterDroppedRows(demoVoterDropped);
+      setVoterData(BUILT_IN_VOTER_DATA);
+      setVoterDroppedRows([]);
       setVoterUploadSummary({
-        parsedRows: parsedVoter.length,
-        usableRows: parsedVoter.length - demoVoterDropped.length,
-        droppedRows: demoVoterDropped.length,
+        parsedRows: BUILT_IN_VOTER_DATA.length,
+        usableRows: BUILT_IN_VOTER_DATA.length,
+        droppedRows: 0,
       });
 
-      setHistoryData(
-        parsedHistory
-          .map(normalizeHistoryRecord)
-          .filter((record: HistoryRecord | null): record is HistoryRecord => record !== null)
-      );
-      const demoHistoryDropped = parsedHistory
-        .map((row: Record<string, unknown>, index: number) => normalizeHistoryRecord(row) ? null : ({ rowNumber: index + 2, reason: getHistoryDropReason(row), row }))
-        .filter((row: { rowNumber: number; reason: string; row: Record<string, unknown> } | null): row is { rowNumber: number; reason: string; row: Record<string, unknown> } => row !== null);
-      setHistoryDroppedRows(demoHistoryDropped);
+      setHistoryData(BUILT_IN_HISTORY_DATA);
+      setHistoryDroppedRows([]);
       setHistoryUploadSummary({
-        parsedRows: parsedHistory.length,
-        usableRows: parsedHistory.length - demoHistoryDropped.length,
-        droppedRows: demoHistoryDropped.length,
+        parsedRows: BUILT_IN_HISTORY_DATA.length,
+        usableRows: BUILT_IN_HISTORY_DATA.length,
+        droppedRows: 0,
       });
 
-      const firstCvapRow = parsedCvap.find((row: Record<string, unknown>) => Object.keys(row).length > 0);
-      const headers = firstCvapRow ? Object.keys(firstCvapRow) : [];
+      const headers = ['county_desc', 'year', 'precinct_abbrv', 'cvap_total'];
       setCvapHeaderValidation({
         headers,
         matchedHeaders: {
@@ -790,39 +743,12 @@ export default function App() {
         },
       });
 
-      const droppedRows: Array<{ rowNumber: number; reason: string; row: Record<string, unknown> }> = [];
-      const normalizedCvap = parsedCvap
-        .map((row: Record<string, unknown>, index: number) => {
-          const normalized = normalizeCvapRecord(row);
-          if (normalized) {
-            return normalized;
-          }
-
-          const precinctValue = normalizePrecinct(getRowValue(row, CVAP_PRECINCT_KEYS));
-          const cvapValue = normalizeNumericValue(getRowValue(row, CVAP_TOTAL_KEYS));
-          const countyMatches = isUnionCountyRow(row);
-
-          let reason = 'Row could not be normalized';
-          if (!countyMatches) reason = 'Outside Union County filter';
-          else if (!precinctValue && cvapValue === null) reason = 'Missing precinct and CVAP total values';
-          else if (!precinctValue) reason = 'Missing precinct value';
-          else if (cvapValue === null) reason = 'Missing or invalid CVAP total value';
-
-          droppedRows.push({
-            rowNumber: index + 2,
-            reason,
-            row,
-          });
-          return null;
-        })
-        .filter((record: CVAPRecord | null): record is CVAPRecord => record !== null);
-
-      setCvapData(normalizedCvap);
-      setCvapDroppedRows(droppedRows);
+      setCvapData(BUILT_IN_CVAP_DATA);
+      setCvapDroppedRows([]);
       setCvapUploadSummary({
-        parsedRows: parsedCvap.length,
-        usableRows: normalizedCvap.length,
-        droppedRows: Math.max(parsedCvap.length - normalizedCvap.length, 0),
+        parsedRows: BUILT_IN_CVAP_DATA.length,
+        usableRows: BUILT_IN_CVAP_DATA.length,
+        droppedRows: 0,
       });
       if (activateDashboard) {
         setActiveTab('dashboard');
@@ -929,7 +855,7 @@ export default function App() {
             >
               <div className="flex justify-end">
                 <button
-                  onClick={() => loadBundledData({ activateDashboard: true })}
+                  onClick={() => { void loadBundledData({ activateDashboard: true }); }}
                   disabled={isProcessing}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",

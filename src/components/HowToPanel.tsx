@@ -15,20 +15,20 @@ export function HowToPanel() {
         </section>
 
         <section className="space-y-4 mt-8">
-          <h3 className="text-xl font-bold text-blue-600">How to upload data</h3>
+          <h3 className="text-xl font-bold text-blue-600">Built-In Data and Optional Upload Overrides</h3>
           <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
             <div className="flex gap-4">
               <div className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">1</div>
               <div>
-                <p className="font-bold">Download NCSBE Files</p>
-                <p className="text-sm text-gray-600">Visit the NC State Board of Elections website and download the <code>voter_stats.txt</code> and <code>history_stats.txt</code> files.</p>
+                <p className="font-bold">Start with Built-In Data</p>
+                <p className="text-sm text-gray-600">The dashboard now loads Union County precinct election data into application memory automatically, so you can analyze immediately.</p>
               </div>
             </div>
             <div className="flex gap-4">
               <div className="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">2</div>
               <div>
-                <p className="font-bold">Upload to Dashboard</p>
-                <p className="text-sm text-gray-600">Navigate to the "Data Upload" tab and select the respective files. The app will automatically filter for Union County (County Code: UNION). For CVAP files, include precinct and total CVAP columns; year is optional.</p>
+                <p className="font-bold">Upload Optional Replacements</p>
+                <p className="text-sm text-gray-600">If you have fresher NCSBE extracts, use the upload tab to replace built-in voter, history, or CVAP records. The app still filters to Union County.</p>
               </div>
             </div>
             <div className="flex gap-4">

@@ -356,7 +356,6 @@ export default function App() {
       header: true,
       skipEmptyLines: true,
       dynamicTyping: true,
-      worker: true,
       complete: (results: ParseResult<Record<string, unknown>>) => {
         const data = results.data as Record<string, unknown>[];
 

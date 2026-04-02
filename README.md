@@ -64,6 +64,11 @@ You can also open the GitHub issue template at `.github/ISSUE_TEMPLATE/release-c
 
 The detailed usage and interpretation tutorial is available in `TUTORIAL.md`.
 
+## Security
+
+- Vulnerability handling and disclosure guidance: `SECURITY.md`
+- CI security automation includes dependency review, scheduled npm audit checks, and CodeQL analysis via GitHub Actions
+
 ## Data Inputs
 
 - Built-in memory dataset includes voter, history, and CVAP rows across all Union County precinct IDs in the local map data.

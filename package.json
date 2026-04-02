@@ -10,6 +10,8 @@
     "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item dist -Recurse -Force }\"",
     "release:preflight": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-preflight.ps1",
     "release:postdeploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/post-deploy-check.ps1",
+    "audit:prod": "npm audit --omit=dev",
+    "audit:full": "npm audit",
     "lint": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run"

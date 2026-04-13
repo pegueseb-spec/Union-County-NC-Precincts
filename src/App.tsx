@@ -15,7 +15,8 @@ import {
   MapPin,
   Calendar,
   Download,
-  Map as MapIcon
+  Map as MapIcon,
+  type LucideIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -52,8 +53,11 @@ const sanitizeDownloadFilename = (value: string) => {
   return `${normalized || 'export'}.csv`;
 };
 
-const exportCsvFile = (rows: unknown[], filename: string) => {
-  const csv = Papa.unparse(rows as any[]);
+type CsvCell = string | number | boolean | null | undefined;
+type CsvRow = Record<string, CsvCell>;
+
+const exportCsvFile = (rows: CsvRow[], filename: string) => {
+  const csv = Papa.unparse(rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -266,7 +270,7 @@ const getHistoryDropReason = (row: Record<string, unknown>) => {
 
 // --- Components ---
 
-const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
+const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, onClick: () => void, icon: LucideIcon, label: string }) => (
   <button
     onClick={onClick}
     className={cn(
@@ -285,7 +289,7 @@ const TabButton = ({ active, onClick, icon: Icon, label }: { active: boolean, on
   </button>
 );
 
-const StatCard = ({ title, value, subValue, icon: Icon, color }: { title: string, value: string | number, subValue?: string, icon: any, color: string }) => (
+const StatCard = ({ title, value, subValue, icon: Icon, color }: { title: string, value: string | number, subValue?: string, icon: LucideIcon, color: string }) => (
   <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-start gap-4">
     <div className={cn("p-3 rounded-lg", color)}>
       <Icon size={24} className="text-white" />

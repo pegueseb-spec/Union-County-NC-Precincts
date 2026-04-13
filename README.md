@@ -71,8 +71,9 @@ The detailed usage and interpretation tutorial is available in `TUTORIAL.md`.
 
 ## Data Inputs
 
-- Built-in memory dataset includes voter, history, and CVAP rows across all Union County precinct IDs in the local map data.
-- Uploads are optional and override the in-memory dataset when you provide files.
+- Built-in dataset currently auto-loads voter and history rows from local JSON assets for Union County precinct analysis.
+- CVAP starts empty by default and is populated when you upload a CVAP file.
+- Uploads are optional and replace the in-memory dataset for the corresponding data type when you provide files.
 
 Upload diagnostics:
 - CVAP upload summary includes parsed, usable, dropped, and matched-to-analysis row counts
@@ -88,9 +89,11 @@ Template file:
 - public/data/cvap-template.csv
 
 Built-in source files:
-- public/data/demo-voter.csv
-- public/data/demo-history.csv
-- public/data/demo-cvap.csv
+- public/data/union_voter_stats.json
+- public/data/union_history_stats.json
+- public/data/demo-voter.csv (optional sample)
+- public/data/demo-history.csv (optional sample)
+- public/data/demo-cvap.csv (optional sample)
 - The upload screen provides a `Reload Built-In Dataset` action to restore these defaults in memory
 
 ## Notes

@@ -472,6 +472,25 @@ export default function App() {
     const stats: PrecinctStats[] = [];
     const cvapByPrecinctYear = new Map<string, number>();
     const cvapFallbackByPrecinct = new Map<string, number>();
+    const voterByPrecinct = new Map<string, VoterRecord[]>();
+    const historyByPrecinctYear = new Map<string, HistoryRecord[]>();
+
+    voterData.forEach((record) => {
+      const list = voterByPrecinct.get(record.precinct_abbrv) || [];
+      list.push(record);
+      voterByPrecinct.set(record.precinct_abbrv, list);
+    });
+
+    historyData.forEach((record) => {
+      if (!record.election_date) return;
+      const electionYear = new Date(record.election_date).getFullYear();
+      if (!Number.isFinite(electionYear)) return;
+
+      const key = `${electionYear}:${record.precinct_abbrv}`;
+      const list = historyByPrecinctYear.get(key) || [];
+      list.push(record);
+      historyByPrecinctYear.set(key, list);
+    });
 
     cvapData.forEach((record) => {
       const precinct = normalizePrecinct(record.precinct_abbrv);
@@ -492,14 +511,8 @@ export default function App() {
 
     YEARS.forEach(year => {
       precincts.forEach(precinct => {
-        // Filter registration data for this precinct
-        const precinctReg = voterData.filter(d => d.precinct_abbrv === precinct);
-        
-        // Filter history data for this precinct and year
-        const precinctHistory = historyData.filter(d => {
-          const electionYear = d.election_date ? new Date(d.election_date).getFullYear() : null;
-          return d.precinct_abbrv === precinct && electionYear === year;
-        });
+        const precinctReg = voterByPrecinct.get(precinct) || [];
+        const precinctHistory = historyByPrecinctYear.get(`${year}:${precinct}`) || [];
 
         // Registration Aggregations
         const regByRace: Record<string, number> = {};

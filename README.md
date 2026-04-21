@@ -28,6 +28,7 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Suggests recommended action categories per target (registration growth, persuasion, GOTV chase, election-day logistics)
 - Adds an action filter to isolate and export one strategy lane at a time
 - Adds multi-select target management with export-selected workflow
+- Adds one-click copy for selected target precinct lists with context metadata
 - Adds threshold-based Data Quality Alerts to flag low-trust inputs automatically
 - Exports Opportunity Targets rankings to CSV for direct field handoff
 - Adds focused field packet export for selected precincts (summary + scenario + recommended action)

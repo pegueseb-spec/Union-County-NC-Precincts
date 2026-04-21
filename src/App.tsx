@@ -1419,6 +1419,33 @@ export default function App() {
     setScenarioNotice({ type: 'success', message: `Exported ${selectedRows.length} selected opportunity targets.` });
   };
 
+  const copySelectedTargetPrecincts = async () => {
+    const selectedRows = filteredOpportunityTargets.filter((target) => selectedOpportunityTargets.includes(target.precinct));
+    if (selectedRows.length === 0) {
+      setScenarioNotice({ type: 'error', message: 'Select at least one target before copying precincts.' });
+      return;
+    }
+
+    const generatedAt = new Date().toISOString();
+    const payload = [
+      `Year: ${selectedYear}`,
+      `Action Filter: ${opportunityActionFilter}`,
+      `Precinct Filter: ${selectedPrecinct}`,
+      `Selected Targets: ${selectedRows.length}`,
+      `Generated At (UTC): ${generatedAt}`,
+      '',
+      ...selectedRows.map((target, index) => `${index + 1}. ${target.precinct} (${target.actionCategory})`),
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(payload);
+      setScenarioNotice({ type: 'success', message: `Copied ${selectedRows.length} selected target precincts.` });
+    } catch {
+      setError('Could not copy selected target precincts to clipboard in this browser context.');
+      setScenarioNotice({ type: 'error', message: 'Copy selected targets failed in this browser context.' });
+    }
+  };
+
   const exportFocusedFieldPacketCsv = () => {
     if (selectedPrecinct === 'ALL' || !filteredStats[0]) {
       setScenarioNotice({ type: 'error', message: 'Select a precinct to export a focused field packet.' });
@@ -2138,6 +2165,18 @@ export default function App() {
                       )}
                     >
                       Export Selected CSV
+                    </button>
+                    <button
+                      onClick={() => { void copySelectedTargetPrecincts(); }}
+                      disabled={selectedOpportunityTargets.length === 0}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                        selectedOpportunityTargets.length === 0
+                          ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      )}
+                    >
+                      Copy Selected Precincts
                     </button>
                   </div>
                 </div>

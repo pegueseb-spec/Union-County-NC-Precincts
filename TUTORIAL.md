@@ -131,6 +131,7 @@ Use the Scenario Planner section to estimate impact before committing resources:
 5. Export Scenario CSV to share modeled precinct-level gains with field and analytics teams
 6. Export Planning Bundle CSV for a single file that includes both dashboard summary and scenario projection rows
 7. Review the assumptions block at the top of the planning bundle before sharing downstream
+8. Use Copy Assumptions to paste the exact scenario context into briefs, tickets, or team chat
 
 Notes:
 

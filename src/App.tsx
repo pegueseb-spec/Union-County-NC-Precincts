@@ -1043,6 +1043,23 @@ export default function App() {
     exportCsvFile(rows, `Union_County_Analysis_${selectedYear}.csv`);
   };
 
+  const copyScenarioAssumptions = async () => {
+    const generatedAt = new Date().toISOString();
+    const assumptionsText = [
+      `Year: ${selectedYear}`,
+      `Precinct Filter: ${selectedPrecinct}`,
+      `Turnout Lift Assumption (%): ${scenarioTurnoutLiftPct.toFixed(1)}`,
+      `Filtered Rows: ${filteredStats.length}`,
+      `Generated At (UTC): ${generatedAt}`,
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(assumptionsText);
+    } catch {
+      setError('Could not copy scenario assumptions to clipboard in this browser context.');
+    }
+  };
+
   const exportPlanningBundleCsv = () => {
     if (filteredStats.length === 0 && scenarioProjection.rows.length === 0) {
       setError('No planning rows are available to export for the selected filters.');
@@ -1619,6 +1636,12 @@ export default function App() {
 
                 <div className="flex justify-end">
                   <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => { void copyScenarioAssumptions(); }}
+                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    >
+                      Copy Assumptions
+                    </button>
                     <button
                       onClick={exportPlanningBundleCsv}
                       disabled={(filteredStats.length === 0 && scenarioProjection.rows.length === 0) || isProcessing}

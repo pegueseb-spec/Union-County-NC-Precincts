@@ -62,6 +62,7 @@ describe('App', () => {
     expect(screen.getByLabelText(/election year/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^precinct$/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /scenario planner/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /copy assumptions/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export planning bundle csv/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export scenario csv/i })).toBeInTheDocument();
     expect(screen.getByText(/reg \/ cvap/i)).toBeInTheDocument();

@@ -120,6 +120,15 @@ For each priority precinct, assign one dominant strategy:
 4. Thursday: field deployment and message testing
 5. Friday: export report and update stakeholder summary
 
+## Session Persistence
+
+The dashboard now remembers key controls between sessions:
+
+1. Election year
+2. Precinct filter
+3. Scenario turnout lift
+4. Opportunity action filter
+
 ## Scenario Planning
 
 Use the Scenario Planner section to estimate impact before committing resources:

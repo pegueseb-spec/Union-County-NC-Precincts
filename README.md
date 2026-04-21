@@ -30,6 +30,7 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Adds threshold-based Data Quality Alerts to flag low-trust inputs automatically
 - Exports Opportunity Targets rankings to CSV for direct field handoff
 - Adds focused field packet export for selected precincts (summary + scenario + recommended action)
+- Persists key dashboard controls between sessions (year, precinct, scenario lift, action filter)
 - Exports the filtered dashboard view as CSV
 
 ## Run Locally

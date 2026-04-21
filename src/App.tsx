@@ -48,7 +48,27 @@ const COUNTY_KEYS = ['county_desc', 'county', 'county_name', 'county_nam'];
 const MAX_UPLOAD_FILE_BYTES = 20 * 1024 * 1024;
 const FILE_UPLOAD_PATTERN = /\.(txt|csv)$/i;
 const ASSET_FETCH_TIMEOUT_MS = 15000;
+const STORAGE_KEYS = {
+  selectedYear: 'uci:selectedYear',
+  selectedPrecinct: 'uci:selectedPrecinct',
+  scenarioTurnoutLiftPct: 'uci:scenarioTurnoutLiftPct',
+  opportunityActionFilter: 'uci:opportunityActionFilter',
+} as const;
 const getPublicAssetPath = (relativePath: string) => `${import.meta.env.BASE_URL}${relativePath.replace(/^\/+/, '')}`;
+
+const getStoredString = (key: string, fallback: string) => {
+  if (typeof window === 'undefined') return fallback;
+  const stored = window.localStorage.getItem(key);
+  return stored ?? fallback;
+};
+
+const getStoredNumber = (key: string, fallback: number) => {
+  if (typeof window === 'undefined') return fallback;
+  const stored = window.localStorage.getItem(key);
+  if (stored === null) return fallback;
+  const parsed = Number(stored);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 const sanitizeDownloadFilename = (value: string) => {
   const normalized = value.replace(/\.csv$/i, '').replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '');
@@ -368,11 +388,23 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [selectedYear, setSelectedYear] = useState<number>(2024);
-  const [selectedPrecinct, setSelectedPrecinct] = useState<string>("ALL");
-  const [scenarioTurnoutLiftPct, setScenarioTurnoutLiftPct] = useState<number>(5);
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const value = getStoredNumber(STORAGE_KEYS.selectedYear, 2024);
+    return YEARS.includes(value) ? value : 2024;
+  });
+  const [selectedPrecinct, setSelectedPrecinct] = useState<string>(() => getStoredString(STORAGE_KEYS.selectedPrecinct, 'ALL'));
+  const [scenarioTurnoutLiftPct, setScenarioTurnoutLiftPct] = useState<number>(() => {
+    const value = getStoredNumber(STORAGE_KEYS.scenarioTurnoutLiftPct, 5);
+    return Math.min(20, Math.max(0, value));
+  });
   const [scenarioNotice, setScenarioNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [opportunityActionFilter, setOpportunityActionFilter] = useState<'ALL' | 'Registration Growth' | 'Persuasion' | 'GOTV Chase' | 'Election Day Logistics'>('ALL');
+  const [opportunityActionFilter, setOpportunityActionFilter] = useState<'ALL' | 'Registration Growth' | 'Persuasion' | 'GOTV Chase' | 'Election Day Logistics'>(() => {
+    const stored = getStoredString(STORAGE_KEYS.opportunityActionFilter, 'ALL');
+    if (stored === 'Registration Growth' || stored === 'Persuasion' || stored === 'GOTV Chase' || stored === 'Election Day Logistics') {
+      return stored;
+    }
+    return 'ALL';
+  });
 
   // --- Data Processing ---
 
@@ -946,6 +978,26 @@ export default function App() {
   useEffect(() => {
     void loadBundledData({ activateDashboard: true, silent: true });
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEYS.selectedYear, String(selectedYear));
+  }, [selectedYear]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEYS.selectedPrecinct, selectedPrecinct);
+  }, [selectedPrecinct]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEYS.scenarioTurnoutLiftPct, String(scenarioTurnoutLiftPct));
+  }, [scenarioTurnoutLiftPct]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEYS.opportunityActionFilter, opportunityActionFilter);
+  }, [opportunityActionFilter]);
 
   const avgRegistrationShareOfCvap = useMemo(() => {
     const totalCvap = filteredStats.reduce((acc, s) => acc + s.cvapTotal, 0);

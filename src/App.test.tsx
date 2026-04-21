@@ -43,6 +43,7 @@ describe('App', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    window.localStorage.clear();
     cleanup();
   });
 
@@ -92,6 +93,27 @@ describe('App', () => {
     await screen.findByText(/trend signals \(2024 vs 2023\)/i);
     expect(screen.getByText(/county turnout Δ:/i)).toBeInTheDocument();
     expect(screen.getAllByText(/\+30.00 pts/i).length).toBeGreaterThan(0);
+  });
+
+  it('restores persisted dashboard controls from localStorage', async () => {
+    window.localStorage.setItem('uci:selectedYear', '2023');
+    window.localStorage.setItem('uci:selectedPrecinct', '01');
+    window.localStorage.setItem('uci:scenarioTurnoutLiftPct', '12');
+    window.localStorage.setItem('uci:opportunityActionFilter', 'GOTV Chase');
+
+    render(<App />);
+
+    await screen.findByText(/turnout choropleth map/i);
+
+    const yearSelect = screen.getByLabelText(/election year/i) as HTMLSelectElement;
+    const precinctSelect = screen.getByLabelText(/^precinct$/i) as HTMLSelectElement;
+    const actionFilterSelect = screen.getByLabelText(/opportunity action filter/i) as HTMLSelectElement;
+    const scenarioSlider = screen.getByLabelText(/modeled turnout lift across selected year and precinct filter/i) as HTMLInputElement;
+
+    expect(yearSelect.value).toBe('2023');
+    expect(precinctSelect.value).toBe('01');
+    expect(actionFilterSelect.value).toBe('GOTV Chase');
+    expect(scenarioSlider.value).toBe('12');
   });
 
   it('rejects unsupported upload file types', async () => {

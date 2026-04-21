@@ -1028,6 +1028,32 @@ export default function App() {
     return (cvapMatchSummary.matchedRows / cvapMatchSummary.totalRows) * 100;
   }, [cvapMatchSummary]);
 
+  const dataQualityAlerts = useMemo(() => {
+    const alerts: string[] = [];
+
+    if (voterSuccessRate !== null && voterSuccessRate < 95) {
+      alerts.push(`Voter parse success is ${voterSuccessRate.toFixed(1)}%, below the 95% target.`);
+    }
+
+    if (historySuccessRate !== null && historySuccessRate < 95) {
+      alerts.push(`History parse success is ${historySuccessRate.toFixed(1)}%, below the 95% target.`);
+    }
+
+    if (cvapSuccessRate !== null && cvapSuccessRate < 90) {
+      alerts.push(`CVAP parse success is ${cvapSuccessRate.toFixed(1)}%, below the 90% target.`);
+    }
+
+    if (precinctYearCoverage !== null && precinctYearCoverage < 80) {
+      alerts.push(`Precinct-year coverage is ${precinctYearCoverage.toFixed(1)}%, below the 80% target.`);
+    }
+
+    if (cvapMatchRate !== null && cvapMatchRate < 75) {
+      alerts.push(`CVAP match rate is ${cvapMatchRate.toFixed(1)}%, below the 75% target.`);
+    }
+
+    return alerts;
+  }, [cvapMatchRate, cvapSuccessRate, historySuccessRate, precinctYearCoverage, voterSuccessRate]);
+
   const scenarioProjection = useMemo(() => {
     const rows = filteredStats.map((s) => {
       const projectedBallots = Math.min(s.totalReg, s.totalBallots * (1 + scenarioTurnoutLiftPct / 100));
@@ -1775,6 +1801,27 @@ export default function App() {
                     <p className="mt-1 font-semibold text-gray-900">{BUILT_IN_DATA_METADATA.electionsIncluded.join(', ')}</p>
                     <p className="text-xs text-gray-500 mt-1">Built-in CVAP included: {BUILT_IN_DATA_METADATA.cvapIncluded ? 'Yes' : 'No'}</p>
                   </div>
+                </div>
+
+                <div className={cn(
+                  "rounded-lg border p-4",
+                  dataQualityAlerts.length > 0 ? "border-amber-200 bg-amber-50/70" : "border-emerald-200 bg-emerald-50/70"
+                )}>
+                  <p className={cn(
+                    "text-xs uppercase tracking-wider font-bold",
+                    dataQualityAlerts.length > 0 ? "text-amber-800" : "text-emerald-800"
+                  )}>
+                    Data Quality Alerts
+                  </p>
+                  {dataQualityAlerts.length > 0 ? (
+                    <div className="mt-2 space-y-1 text-sm text-amber-900">
+                      {dataQualityAlerts.map((alert, index) => (
+                        <p key={`dq-alert-${index}`}>{alert}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-emerald-900">No threshold alerts detected for current data inputs.</p>
+                  )}
                 </div>
               </div>
 

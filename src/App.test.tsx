@@ -64,6 +64,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /scenario planner/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /opportunity targets/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/opportunity action filter/i)).toBeInTheDocument();
+    expect(screen.getByText(/data quality alerts/i)).toBeInTheDocument();
     expect(screen.getByText(/recommended action/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export targets csv/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copy assumptions/i })).toBeInTheDocument();

@@ -171,6 +171,7 @@ Before relying on outputs:
 - Precinct-year coverage should be close to full expected coverage
 - CVAP match rate should be monitored before drawing CVAP conclusions
 - Built-in data freshness timestamp should be acceptable for your reporting cycle
+- Review Data Quality Alerts for threshold breaches before distributing field recommendations
 
 ## Interpretation Tips For Better Decisions
 

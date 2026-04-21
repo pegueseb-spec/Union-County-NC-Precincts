@@ -32,6 +32,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
   const [error, setError] = useState<string | null>(null);
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [opportunityWeights, setOpportunityWeights] = useState<OpportunityWeights>(DEFAULT_OPPORTUNITY_WEIGHTS);
+  const [precinctSearchQuery, setPrecinctSearchQuery] = useState('');
   const mapFetchTimeoutMs = 15000;
   const mapHeight = 500;
 
@@ -43,6 +44,14 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     () => Array.from(new Set(stats.map((s) => s.precinct))).filter(Boolean).sort(),
     [stats]
   );
+
+  const matchingPrecincts = useMemo(() => {
+    const query = precinctSearchQuery.trim().toUpperCase();
+    if (!query) return sortedPrecincts.slice(0, 8);
+    return sortedPrecincts
+      .filter((precinct) => precinct.toUpperCase().includes(query))
+      .slice(0, 8);
+  }, [precinctSearchQuery, sortedPrecincts]);
 
   const featureByPrecinctKey = useMemo(() => {
     if (!geoData?.features) return new Map<string, any>();
@@ -104,6 +113,19 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
   }, [featureByPrecinctKey, mappedPrecinctCount, statsByPrecinct]);
 
   const topOpportunityCount = opportunityPrecincts.size;
+
+  const jumpToPrecinct = (rawValue: string) => {
+    const query = rawValue.trim();
+    if (!query) return;
+
+    const exact = sortedPrecincts.find((precinct) => precinct.toUpperCase() === query.toUpperCase());
+    const partial = sortedPrecincts.find((precinct) => precinct.toUpperCase().includes(query.toUpperCase()));
+    const target = exact || partial;
+    if (!target) return;
+
+    onPrecinctSelect(target);
+    setPrecinctSearchQuery(target);
+  };
 
   const resetZoom = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -329,6 +351,14 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       .call(zoomBehaviorRef.current.transform as any, transform);
   }, [geoData, mapHeight, selectedFeature]);
 
+  useEffect(() => {
+    if (selectedPrecinct === 'ALL') {
+      setPrecinctSearchQuery('');
+      return;
+    }
+    setPrecinctSearchQuery(selectedPrecinct);
+  }, [selectedPrecinct]);
+
   const tooltipRenderPos = useMemo(() => {
     const tooltipWidth = 300;
     const tooltipHeight = 290;
@@ -522,7 +552,52 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       </div>
 
       <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur px-3 py-2 rounded-lg border border-gray-200 shadow-sm text-xs text-gray-600">
-        {selectedPrecinct === 'ALL' ? 'Tip: click a precinct to focus insights. Click it again to clear.' : `Selected precinct: ${selectedPrecinct}`}
+        <p>{selectedPrecinct === 'ALL' ? 'Tip: click a precinct to focus insights. Click it again to clear.' : `Selected precinct: ${selectedPrecinct}`}</p>
+        <div className="mt-2 w-[220px] space-y-2">
+          <label htmlFor="map-precinct-search" className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">
+            Quick precinct jump
+          </label>
+          <div className="flex gap-1">
+            <input
+              id="map-precinct-search"
+              value={precinctSearchQuery}
+              onChange={(event) => setPrecinctSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  jumpToPrecinct(precinctSearchQuery);
+                }
+              }}
+              placeholder="Type precinct"
+              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              aria-label="Map precinct quick jump"
+            />
+            <button
+              onClick={() => jumpToPrecinct(precinctSearchQuery)}
+              className="rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              Go
+            </button>
+          </div>
+          {matchingPrecincts.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {matchingPrecincts.map((precinct) => (
+                <button
+                  key={`jump-${precinct}`}
+                  onClick={() => jumpToPrecinct(precinct)}
+                  className={cn(
+                    'rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors',
+                    precinct === selectedPrecinct
+                      ? 'border-blue-300 bg-blue-100 text-blue-800'
+                      : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100'
+                  )}
+                >
+                  {precinct}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <svg 

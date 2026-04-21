@@ -23,6 +23,7 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Provides a one-click planning bundle CSV combining summary and scenario rows
 - Includes an assumptions block in planning bundle exports (filters, turnout lift, timestamp)
 - Adds a one-click Copy Assumptions action for briefing notes and chat handoffs
+- Shows inline success/error notices for scenario copy/export actions
 - Exports the filtered dashboard view as CSV
 
 ## Run Locally

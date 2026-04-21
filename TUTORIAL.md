@@ -132,6 +132,7 @@ Use the Scenario Planner section to estimate impact before committing resources:
 6. Export Planning Bundle CSV for a single file that includes both dashboard summary and scenario projection rows
 7. Review the assumptions block at the top of the planning bundle before sharing downstream
 8. Use Copy Assumptions to paste the exact scenario context into briefs, tickets, or team chat
+9. Confirm the inline success/error notice after copy/export actions before sharing outputs
 
 Notes:
 

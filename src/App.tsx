@@ -350,6 +350,7 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState<number>(2024);
   const [selectedPrecinct, setSelectedPrecinct] = useState<string>("ALL");
   const [scenarioTurnoutLiftPct, setScenarioTurnoutLiftPct] = useState<number>(5);
+  const [scenarioNotice, setScenarioNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // --- Data Processing ---
 
@@ -994,6 +995,7 @@ export default function App() {
   const exportScenarioCsv = () => {
     if (scenarioProjection.rows.length === 0) {
       setError('No scenario rows are available to export for the selected filters.');
+      setScenarioNotice({ type: 'error', message: 'No scenario rows available for export under current filters.' });
       return;
     }
 
@@ -1017,6 +1019,7 @@ export default function App() {
     });
 
     exportCsvFile(rows, `scenario_projection_${selectedYear}.csv`);
+    setScenarioNotice({ type: 'success', message: `Exported scenario projection CSV for ${selectedYear}.` });
   };
 
   const exportSummaryCsv = () => {
@@ -1055,14 +1058,17 @@ export default function App() {
 
     try {
       await navigator.clipboard.writeText(assumptionsText);
+      setScenarioNotice({ type: 'success', message: 'Copied scenario assumptions to clipboard.' });
     } catch {
       setError('Could not copy scenario assumptions to clipboard in this browser context.');
+      setScenarioNotice({ type: 'error', message: 'Copy assumptions failed in this browser context.' });
     }
   };
 
   const exportPlanningBundleCsv = () => {
     if (filteredStats.length === 0 && scenarioProjection.rows.length === 0) {
       setError('No planning rows are available to export for the selected filters.');
+      setScenarioNotice({ type: 'error', message: 'No planning rows available for bundle export.' });
       return;
     }
 
@@ -1175,6 +1181,7 @@ export default function App() {
     });
 
     exportCsvFile([...assumptionRows, ...summaryRows, ...scenarioRows], `planning_bundle_${selectedYear}.csv`);
+    setScenarioNotice({ type: 'success', message: `Exported planning bundle CSV for ${selectedYear}.` });
   };
 
   return (
@@ -1633,6 +1640,20 @@ export default function App() {
                     <p className="mt-1 text-2xl font-bold text-emerald-900">+{Math.round(scenarioProjection.additionalBallots).toLocaleString()}</p>
                   </div>
                 </div>
+
+                {scenarioNotice && (
+                  <div
+                    role="status"
+                    className={cn(
+                      "rounded-lg border px-4 py-3 text-sm font-medium",
+                      scenarioNotice.type === 'success'
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-red-200 bg-red-50 text-red-800"
+                    )}
+                  >
+                    {scenarioNotice.message}
+                  </div>
+                )}
 
                 <div className="flex justify-end">
                   <div className="flex items-center gap-3">

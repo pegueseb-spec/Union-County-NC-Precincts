@@ -104,6 +104,12 @@ const formatPercent = (value: number | null) => {
   return `${value.toFixed(1)}%`;
 };
 
+const SCENARIO_CONFIDENCE_MULTIPLIERS = {
+  conservative: 0.7,
+  base: 1,
+  aggressive: 1.3,
+} as const;
+
 const getRecommendedActionCategory = (
   registrationShareOfCvap: number,
   turnoutOverall: number,
@@ -1109,25 +1115,47 @@ export default function App() {
   const scenarioProjection = useMemo(() => {
     const rows = filteredStats.map((s) => {
       const projectedBallots = Math.min(s.totalReg, s.totalBallots * (1 + scenarioTurnoutLiftPct / 100));
+      const projectedBallotsConservative = Math.min(
+        s.totalReg,
+        s.totalBallots * (1 + ((scenarioTurnoutLiftPct * SCENARIO_CONFIDENCE_MULTIPLIERS.conservative) / 100)),
+      );
+      const projectedBallotsAggressive = Math.min(
+        s.totalReg,
+        s.totalBallots * (1 + ((scenarioTurnoutLiftPct * SCENARIO_CONFIDENCE_MULTIPLIERS.aggressive) / 100)),
+      );
       const additionalBallots = Math.max(projectedBallots - s.totalBallots, 0);
+      const additionalBallotsConservative = Math.max(projectedBallotsConservative - s.totalBallots, 0);
+      const additionalBallotsAggressive = Math.max(projectedBallotsAggressive - s.totalBallots, 0);
       return {
         precinct: s.precinct,
         baselineBallots: s.totalBallots,
         projectedBallots,
+        projectedBallotsConservative,
+        projectedBallotsAggressive,
         additionalBallots,
+        additionalBallotsConservative,
+        additionalBallotsAggressive,
       };
     });
 
     const baselineBallots = rows.reduce((acc, row) => acc + row.baselineBallots, 0);
     const projectedBallots = rows.reduce((acc, row) => acc + row.projectedBallots, 0);
+    const projectedBallotsConservative = rows.reduce((acc, row) => acc + row.projectedBallotsConservative, 0);
+    const projectedBallotsAggressive = rows.reduce((acc, row) => acc + row.projectedBallotsAggressive, 0);
     const additionalBallots = rows.reduce((acc, row) => acc + row.additionalBallots, 0);
+    const additionalBallotsConservative = rows.reduce((acc, row) => acc + row.additionalBallotsConservative, 0);
+    const additionalBallotsAggressive = rows.reduce((acc, row) => acc + row.additionalBallotsAggressive, 0);
     const topGains = [...rows].sort((a, b) => b.additionalBallots - a.additionalBallots).slice(0, 5);
 
     return {
       rows,
       baselineBallots,
       projectedBallots,
+      projectedBallotsConservative,
+      projectedBallotsAggressive,
       additionalBallots,
+      additionalBallotsConservative,
+      additionalBallotsAggressive,
       topGains,
     };
   }, [filteredStats, scenarioTurnoutLiftPct]);
@@ -1145,6 +1173,12 @@ export default function App() {
       const projectedTurnout = matchingStat && matchingStat.totalReg > 0
         ? (row.projectedBallots / matchingStat.totalReg) * 100
         : 0;
+      const projectedTurnoutConservative = matchingStat && matchingStat.totalReg > 0
+        ? (row.projectedBallotsConservative / matchingStat.totalReg) * 100
+        : 0;
+      const projectedTurnoutAggressive = matchingStat && matchingStat.totalReg > 0
+        ? (row.projectedBallotsAggressive / matchingStat.totalReg) * 100
+        : 0;
 
       return {
         Year: selectedYear,
@@ -1152,9 +1186,15 @@ export default function App() {
         'Turnout Lift Assumption %': scenarioTurnoutLiftPct.toFixed(1),
         'Baseline Ballots': Math.round(row.baselineBallots),
         'Projected Ballots': Math.round(row.projectedBallots),
+        'Projected Ballots Conservative': Math.round(row.projectedBallotsConservative),
+        'Projected Ballots Aggressive': Math.round(row.projectedBallotsAggressive),
         'Estimated Additional Ballots': Math.round(row.additionalBallots),
+        'Estimated Additional Ballots Conservative': Math.round(row.additionalBallotsConservative),
+        'Estimated Additional Ballots Aggressive': Math.round(row.additionalBallotsAggressive),
         'Baseline Turnout %': baselineTurnout.toFixed(2),
         'Projected Turnout %': projectedTurnout.toFixed(2),
+        'Projected Turnout Conservative %': projectedTurnoutConservative.toFixed(2),
+        'Projected Turnout Aggressive %': projectedTurnoutAggressive.toFixed(2),
       };
     });
 
@@ -1356,8 +1396,14 @@ export default function App() {
 
     const stat = filteredStats[0];
     const projectedBallots = Math.min(stat.totalReg, stat.totalBallots * (1 + scenarioTurnoutLiftPct / 100));
+    const projectedBallotsConservative = Math.min(stat.totalReg, stat.totalBallots * (1 + ((scenarioTurnoutLiftPct * SCENARIO_CONFIDENCE_MULTIPLIERS.conservative) / 100)));
+    const projectedBallotsAggressive = Math.min(stat.totalReg, stat.totalBallots * (1 + ((scenarioTurnoutLiftPct * SCENARIO_CONFIDENCE_MULTIPLIERS.aggressive) / 100)));
     const projectedTurnoutPct = stat.totalReg > 0 ? (projectedBallots / stat.totalReg) * 100 : 0;
+    const projectedTurnoutPctConservative = stat.totalReg > 0 ? (projectedBallotsConservative / stat.totalReg) * 100 : 0;
+    const projectedTurnoutPctAggressive = stat.totalReg > 0 ? (projectedBallotsAggressive / stat.totalReg) * 100 : 0;
     const additionalBallots = Math.max(projectedBallots - stat.totalBallots, 0);
+    const additionalBallotsConservative = Math.max(projectedBallotsConservative - stat.totalBallots, 0);
+    const additionalBallotsAggressive = Math.max(projectedBallotsAggressive - stat.totalBallots, 0);
     const actionCategory = getRecommendedActionCategory(stat.registrationShareOfCvap, stat.turnoutOverall, stat.turnoutDeltaYoY);
     const opportunityScore = opportunityScoreByPrecinct.get(stat.precinct) ?? null;
     const generatedAt = new Date().toISOString();
@@ -1430,8 +1476,28 @@ export default function App() {
       },
       {
         RowType: 'Scenario Projection',
+        Metric: 'Projected Turnout Conservative %',
+        Value: projectedTurnoutPctConservative.toFixed(2),
+      },
+      {
+        RowType: 'Scenario Projection',
+        Metric: 'Projected Turnout Aggressive %',
+        Value: projectedTurnoutPctAggressive.toFixed(2),
+      },
+      {
+        RowType: 'Scenario Projection',
         Metric: 'Estimated Additional Ballots',
         Value: Math.round(additionalBallots),
+      },
+      {
+        RowType: 'Scenario Projection',
+        Metric: 'Estimated Additional Ballots Conservative',
+        Value: Math.round(additionalBallotsConservative),
+      },
+      {
+        RowType: 'Scenario Projection',
+        Metric: 'Estimated Additional Ballots Aggressive',
+        Value: Math.round(additionalBallotsAggressive),
       },
     ];
 
@@ -1914,6 +1980,24 @@ export default function App() {
                   <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
                     <p className="text-xs uppercase tracking-wider font-bold text-emerald-700">Estimated Additional Ballots</p>
                     <p className="mt-1 text-2xl font-bold text-emerald-900">+{Math.round(scenarioProjection.additionalBallots).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4">
+                  <p className="text-xs uppercase tracking-wider font-bold text-blue-700">Confidence Band (Estimated Additional Ballots)</p>
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                    <div className="rounded-md border border-blue-100 bg-white/70 p-3">
+                      <p className="text-[11px] uppercase tracking-wider font-semibold text-blue-700">Conservative</p>
+                      <p className="mt-1 font-bold text-blue-900">+{Math.round(scenarioProjection.additionalBallotsConservative).toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-md border border-blue-100 bg-white/70 p-3">
+                      <p className="text-[11px] uppercase tracking-wider font-semibold text-blue-700">Base</p>
+                      <p className="mt-1 font-bold text-blue-900">+{Math.round(scenarioProjection.additionalBallots).toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-md border border-blue-100 bg-white/70 p-3">
+                      <p className="text-[11px] uppercase tracking-wider font-semibold text-blue-700">Aggressive</p>
+                      <p className="mt-1 font-bold text-blue-900">+{Math.round(scenarioProjection.additionalBallotsAggressive).toLocaleString()}</p>
+                    </div>
                   </div>
                 </div>
 

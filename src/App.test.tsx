@@ -63,6 +63,7 @@ describe('App', () => {
     expect(screen.getByLabelText(/election year/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^precinct$/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /scenario planner/i })).toBeInTheDocument();
+    expect(screen.getByText(/confidence band \(estimated additional ballots\)/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /opportunity targets/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/opportunity action filter/i)).toBeInTheDocument();
     expect(screen.getByText(/data quality alerts/i)).toBeInTheDocument();

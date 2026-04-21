@@ -31,6 +31,7 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Exports Opportunity Targets rankings to CSV for direct field handoff
 - Adds focused field packet export for selected precincts (summary + scenario + recommended action)
 - Persists key dashboard controls between sessions (year, precinct, scenario lift, action filter)
+- Adds conservative/base/aggressive confidence bands for scenario planning outputs
 - Exports the filtered dashboard view as CSV
 
 ## Run Locally

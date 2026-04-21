@@ -142,6 +142,7 @@ Use the Scenario Planner section to estimate impact before committing resources:
 7. Review the assumptions block at the top of the planning bundle before sharing downstream
 8. Use Copy Assumptions to paste the exact scenario context into briefs, tickets, or team chat
 9. Confirm the inline success/error notice after copy/export actions before sharing outputs
+11. Compare conservative/base/aggressive confidence bands to size low-risk and high-upside plans
 
 ## Opportunity Targets Panel
 

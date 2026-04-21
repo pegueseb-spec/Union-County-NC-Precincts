@@ -18,6 +18,10 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Highlights top-quartile opportunity precincts using a weighted score model
 - Lets organizers tune opportunity-score weights directly in the map controls
 - Shows data quality and provenance indicators (parse success, coverage, freshness)
+- Includes a scenario planner to estimate added ballots from turnout-lift assumptions
+- Exports scenario projections as CSV for field planning handoff
+- Provides a one-click planning bundle CSV combining summary and scenario rows
+- Includes an assumptions block in planning bundle exports (filters, turnout lift, timestamp)
 - Exports the filtered dashboard view as CSV
 
 ## Run Locally

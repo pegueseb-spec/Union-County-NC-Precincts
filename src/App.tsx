@@ -349,6 +349,7 @@ export default function App() {
   // Filters
   const [selectedYear, setSelectedYear] = useState<number>(2024);
   const [selectedPrecinct, setSelectedPrecinct] = useState<string>("ALL");
+  const [scenarioTurnoutLiftPct, setScenarioTurnoutLiftPct] = useState<number>(5);
 
   // --- Data Processing ---
 
@@ -964,6 +965,60 @@ export default function App() {
     return (cvapMatchSummary.matchedRows / cvapMatchSummary.totalRows) * 100;
   }, [cvapMatchSummary]);
 
+  const scenarioProjection = useMemo(() => {
+    const rows = filteredStats.map((s) => {
+      const projectedBallots = Math.min(s.totalReg, s.totalBallots * (1 + scenarioTurnoutLiftPct / 100));
+      const additionalBallots = Math.max(projectedBallots - s.totalBallots, 0);
+      return {
+        precinct: s.precinct,
+        baselineBallots: s.totalBallots,
+        projectedBallots,
+        additionalBallots,
+      };
+    });
+
+    const baselineBallots = rows.reduce((acc, row) => acc + row.baselineBallots, 0);
+    const projectedBallots = rows.reduce((acc, row) => acc + row.projectedBallots, 0);
+    const additionalBallots = rows.reduce((acc, row) => acc + row.additionalBallots, 0);
+    const topGains = [...rows].sort((a, b) => b.additionalBallots - a.additionalBallots).slice(0, 5);
+
+    return {
+      rows,
+      baselineBallots,
+      projectedBallots,
+      additionalBallots,
+      topGains,
+    };
+  }, [filteredStats, scenarioTurnoutLiftPct]);
+
+  const exportScenarioCsv = () => {
+    if (scenarioProjection.rows.length === 0) {
+      setError('No scenario rows are available to export for the selected filters.');
+      return;
+    }
+
+    const rows = scenarioProjection.rows.map((row) => {
+      const matchingStat = filteredStats.find((s) => s.precinct === row.precinct);
+      const baselineTurnout = matchingStat?.turnoutOverall ?? 0;
+      const projectedTurnout = matchingStat && matchingStat.totalReg > 0
+        ? (row.projectedBallots / matchingStat.totalReg) * 100
+        : 0;
+
+      return {
+        Year: selectedYear,
+        Precinct: row.precinct,
+        'Turnout Lift Assumption %': scenarioTurnoutLiftPct.toFixed(1),
+        'Baseline Ballots': Math.round(row.baselineBallots),
+        'Projected Ballots': Math.round(row.projectedBallots),
+        'Estimated Additional Ballots': Math.round(row.additionalBallots),
+        'Baseline Turnout %': baselineTurnout.toFixed(2),
+        'Projected Turnout %': projectedTurnout.toFixed(2),
+      };
+    });
+
+    exportCsvFile(rows, `scenario_projection_${selectedYear}.csv`);
+  };
+
   const exportSummaryCsv = () => {
     const rows = filteredStats.map(s => ({
       Year: s.year,
@@ -986,6 +1041,123 @@ export default function App() {
     }));
 
     exportCsvFile(rows, `Union_County_Analysis_${selectedYear}.csv`);
+  };
+
+  const exportPlanningBundleCsv = () => {
+    if (filteredStats.length === 0 && scenarioProjection.rows.length === 0) {
+      setError('No planning rows are available to export for the selected filters.');
+      return;
+    }
+
+    const generatedAt = new Date().toISOString();
+    const assumptionRows = [
+      {
+        RowType: 'Assumption',
+        Year: selectedYear,
+        Precinct: 'Filter',
+        Trend: selectedPrecinct,
+        CVAP: '',
+        'Total Registered': '',
+        'Registered / CVAP %': '',
+        'Registered / CVAP Δ YoY (pts)': '',
+        'Total Ballots': '',
+        'Turnout %': '',
+        'Turnout Δ YoY (pts)': '',
+        'Ballots / CVAP %': '',
+        'Ballots / CVAP Δ YoY (pts)': '',
+        'Turnout Lift Assumption %': scenarioTurnoutLiftPct.toFixed(1),
+        'Projected Ballots': '',
+        'Estimated Additional Ballots': '',
+        'Projected Turnout %': '',
+      },
+      {
+        RowType: 'Assumption',
+        Year: selectedYear,
+        Precinct: 'Filtered Rows',
+        Trend: String(filteredStats.length),
+        CVAP: '',
+        'Total Registered': '',
+        'Registered / CVAP %': '',
+        'Registered / CVAP Δ YoY (pts)': '',
+        'Total Ballots': '',
+        'Turnout %': '',
+        'Turnout Δ YoY (pts)': '',
+        'Ballots / CVAP %': '',
+        'Ballots / CVAP Δ YoY (pts)': '',
+        'Turnout Lift Assumption %': '',
+        'Projected Ballots': '',
+        'Estimated Additional Ballots': '',
+        'Projected Turnout %': '',
+      },
+      {
+        RowType: 'Assumption',
+        Year: selectedYear,
+        Precinct: 'Generated At (UTC)',
+        Trend: generatedAt,
+        CVAP: '',
+        'Total Registered': '',
+        'Registered / CVAP %': '',
+        'Registered / CVAP Δ YoY (pts)': '',
+        'Total Ballots': '',
+        'Turnout %': '',
+        'Turnout Δ YoY (pts)': '',
+        'Ballots / CVAP %': '',
+        'Ballots / CVAP Δ YoY (pts)': '',
+        'Turnout Lift Assumption %': '',
+        'Projected Ballots': '',
+        'Estimated Additional Ballots': '',
+        'Projected Turnout %': '',
+      },
+    ];
+
+    const summaryRows = filteredStats.map((s) => ({
+      RowType: 'Dashboard Summary',
+      Year: s.year,
+      Precinct: s.precinct,
+      Trend: s.trendLabel,
+      CVAP: s.cvapTotal || '',
+      'Total Registered': s.totalReg,
+      'Registered / CVAP %': s.cvapTotal > 0 ? s.registrationShareOfCvap.toFixed(2) : '',
+      'Registered / CVAP Δ YoY (pts)': s.registrationShareOfCvapDeltaYoY !== null ? s.registrationShareOfCvapDeltaYoY.toFixed(2) : '',
+      'Total Ballots': s.totalBallots,
+      'Turnout %': s.turnoutOverall.toFixed(2),
+      'Turnout Δ YoY (pts)': s.turnoutDeltaYoY !== null ? s.turnoutDeltaYoY.toFixed(2) : '',
+      'Ballots / CVAP %': s.cvapTotal > 0 ? s.ballotShareOfCvap.toFixed(2) : '',
+      'Ballots / CVAP Δ YoY (pts)': s.ballotShareOfCvapDeltaYoY !== null ? s.ballotShareOfCvapDeltaYoY.toFixed(2) : '',
+      'Turnout Lift Assumption %': '',
+      'Projected Ballots': '',
+      'Estimated Additional Ballots': '',
+      'Projected Turnout %': '',
+    }));
+
+    const scenarioRows = scenarioProjection.rows.map((row) => {
+      const matchingStat = filteredStats.find((s) => s.precinct === row.precinct);
+      const projectedTurnout = matchingStat && matchingStat.totalReg > 0
+        ? (row.projectedBallots / matchingStat.totalReg) * 100
+        : 0;
+
+      return {
+        RowType: 'Scenario Projection',
+        Year: selectedYear,
+        Precinct: row.precinct,
+        Trend: '',
+        CVAP: '',
+        'Total Registered': matchingStat?.totalReg ?? '',
+        'Registered / CVAP %': '',
+        'Registered / CVAP Δ YoY (pts)': '',
+        'Total Ballots': Math.round(row.baselineBallots),
+        'Turnout %': matchingStat?.turnoutOverall.toFixed(2) ?? '',
+        'Turnout Δ YoY (pts)': '',
+        'Ballots / CVAP %': '',
+        'Ballots / CVAP Δ YoY (pts)': '',
+        'Turnout Lift Assumption %': scenarioTurnoutLiftPct.toFixed(1),
+        'Projected Ballots': Math.round(row.projectedBallots),
+        'Estimated Additional Ballots': Math.round(row.additionalBallots),
+        'Projected Turnout %': projectedTurnout.toFixed(2),
+      };
+    });
+
+    exportCsvFile([...assumptionRows, ...summaryRows, ...scenarioRows], `planning_bundle_${selectedYear}.csv`);
   };
 
   return (
@@ -1401,6 +1573,90 @@ export default function App() {
                     <p className="text-xs uppercase tracking-wider font-bold text-gray-500">Election Coverage</p>
                     <p className="mt-1 font-semibold text-gray-900">{BUILT_IN_DATA_METADATA.electionsIncluded.join(', ')}</p>
                     <p className="text-xs text-gray-500 mt-1">Built-in CVAP included: {BUILT_IN_DATA_METADATA.cvapIncluded ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <h3 className="text-lg font-bold text-gray-900">Scenario Planner</h3>
+                  <div className="text-sm text-gray-600 font-medium">
+                    Turnout Lift Assumption: <span className="font-bold text-gray-900">+{scenarioTurnoutLiftPct}%</span>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+                  <label htmlFor="scenario-lift" className="block text-xs font-bold uppercase tracking-wider text-emerald-800 mb-2">
+                    Modeled turnout lift across selected year and precinct filter
+                  </label>
+                  <input
+                    id="scenario-lift"
+                    type="range"
+                    min={0}
+                    max={20}
+                    step={0.5}
+                    value={scenarioTurnoutLiftPct}
+                    onChange={(event) => setScenarioTurnoutLiftPct(Number(event.target.value))}
+                    className="w-full"
+                  />
+                  <div className="mt-2 text-xs text-emerald-900">Range: 0% to 20% turnout lift.</div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-xs uppercase tracking-wider font-bold text-gray-500">Baseline Ballots</p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900">{Math.round(scenarioProjection.baselineBallots).toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                    <p className="text-xs uppercase tracking-wider font-bold text-blue-700">Projected Ballots</p>
+                    <p className="mt-1 text-2xl font-bold text-blue-900">{Math.round(scenarioProjection.projectedBallots).toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+                    <p className="text-xs uppercase tracking-wider font-bold text-emerald-700">Estimated Additional Ballots</p>
+                    <p className="mt-1 text-2xl font-bold text-emerald-900">+{Math.round(scenarioProjection.additionalBallots).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={exportPlanningBundleCsv}
+                      disabled={(filteredStats.length === 0 && scenarioProjection.rows.length === 0) || isProcessing}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
+                        (filteredStats.length === 0 && scenarioProjection.rows.length === 0) || isProcessing
+                          ? "bg-slate-200 text-white cursor-not-allowed"
+                          : "bg-slate-700 text-white hover:bg-slate-800"
+                      )}
+                    >
+                      Export Planning Bundle CSV
+                    </button>
+                    <button
+                      onClick={exportScenarioCsv}
+                      disabled={scenarioProjection.rows.length === 0 || isProcessing}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
+                        scenarioProjection.rows.length === 0 || isProcessing
+                          ? "bg-emerald-200 text-white cursor-not-allowed"
+                          : "bg-emerald-600 text-white hover:bg-emerald-700"
+                      )}
+                    >
+                      Export Scenario CSV
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <p className="text-xs uppercase tracking-wider font-bold text-gray-600 mb-3">Top Estimated Precinct Gains</p>
+                  <div className="space-y-2 text-sm">
+                    {scenarioProjection.topGains.length > 0 ? scenarioProjection.topGains.map((row) => (
+                      <div key={`scenario-${row.precinct}`} className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-900">{row.precinct}</span>
+                        <span className="font-bold text-emerald-700">+{Math.round(row.additionalBallots).toLocaleString()}</span>
+                      </div>
+                    )) : (
+                      <p className="text-gray-500">No rows available for the selected filter.</p>
+                    )}
                   </div>
                 </div>
               </div>

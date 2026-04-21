@@ -60,7 +60,10 @@ describe('App', () => {
 
     await screen.findByText(/turnout choropleth map/i);
     expect(screen.getByLabelText(/election year/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/precinct/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^precinct$/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /scenario planner/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /export planning bundle csv/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /export scenario csv/i })).toBeInTheDocument();
     expect(screen.getByText(/reg \/ cvap/i)).toBeInTheDocument();
     expect(screen.getByText(/data quality and provenance/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /precinct insights/i })).toBeInTheDocument();

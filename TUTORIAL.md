@@ -120,6 +120,23 @@ For each priority precinct, assign one dominant strategy:
 4. Thursday: field deployment and message testing
 5. Friday: export report and update stakeholder summary
 
+## Scenario Planning
+
+Use the Scenario Planner section to estimate impact before committing resources:
+
+1. Choose year and precinct scope using dashboard filters
+2. Set turnout lift assumption (0% to 20%)
+3. Review projected ballots and estimated additional ballots
+4. Use Top Estimated Precinct Gains to prioritize deployment
+5. Export Scenario CSV to share modeled precinct-level gains with field and analytics teams
+6. Export Planning Bundle CSV for a single file that includes both dashboard summary and scenario projection rows
+7. Review the assumptions block at the top of the planning bundle before sharing downstream
+
+Notes:
+
+- Projection caps ballots at registered voters in each precinct
+- Scenario values are directional planning aids, not forecasts with confidence intervals
+
 ## Data Quality Checks
 
 Before relying on outputs:

@@ -50,6 +50,10 @@ The dashboard combines three datasets:
 - Formula: ballots / cvap x 100
 - Useful for understanding effective mobilization of total eligible citizens
 
+6. Year-over-year deltas
+- The dashboard now calculates turnout, Registered/CVAP, and Ballots/CVAP deltas versus the prior year for each precinct
+- Positive values indicate improvement; negative values indicate slippage
+
 ## Recommended Operating Workflow
 
 ### Step 1: Baseline countywide scan
@@ -77,6 +81,12 @@ Prioritize precincts where:
 - Registration is high but turnout is low
 - Ballots/CVAP is meaningfully below neighboring precincts
 - One segment (party or race) has unusually weak turnout relative to registration share
+
+Also use Opportunity Mode on the map:
+
+- Opportunity score now combines turnout gap, registration mass, CVAP gap, and recent decline
+- Highlighted precincts represent the top quartile of score values for the selected year
+- Darker orange indicates higher relative priority among highlighted precincts
 
 ### Step 4: Build action categories
 
@@ -116,6 +126,11 @@ Before relying on outputs:
 2. If CVAP match is low, export CVAP issue rows and clean inputs
 3. Confirm precinct naming consistency (leading zeros, abbreviations)
 4. Verify selected year aligns with intended election cycle
+5. Check Data Quality and Provenance panel before sharing insights:
+- Voter/History/CVAP parse success rates should be stable and high
+- Precinct-year coverage should be close to full expected coverage
+- CVAP match rate should be monitored before drawing CVAP conclusions
+- Built-in data freshness timestamp should be acceptable for your reporting cycle
 
 ## Interpretation Tips For Better Decisions
 

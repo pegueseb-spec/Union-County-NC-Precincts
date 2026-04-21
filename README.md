@@ -13,7 +13,10 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Loads built-in Union County precinct election data directly in app memory
 - Filters records to Union County precincts
 - Computes registration, ballot, turnout, and density summaries
+- Computes year-over-year trend deltas for turnout and CVAP conversion
 - Displays precinct-level stats and a choropleth map
+- Highlights top-quartile opportunity precincts using a weighted score model
+- Shows data quality and provenance indicators (parse success, coverage, freshness)
 - Exports the filtered dashboard view as CSV
 
 ## Run Locally

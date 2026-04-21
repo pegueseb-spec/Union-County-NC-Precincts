@@ -11,11 +11,64 @@ interface ChoroplethMapProps {
   onPrecinctSelect: (precinct: string) => void;
 }
 
+type OpportunityScore = {
+  precinct: string;
+  score: number;
+  turnoutGapNorm: number;
+  registrationMassNorm: number;
+  cvapGapNorm: number;
+  declineNorm: number;
+};
+
+const normalizeValue = (value: number, min: number, max: number) => {
+  if (!Number.isFinite(value)) return 0;
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 0;
+  return (value - min) / (max - min);
+};
+
+export const computeOpportunityScores = (stats: PrecinctStats[]): OpportunityScore[] => {
+  if (stats.length === 0) return [];
+
+  const countyTurnout = (stats.reduce((acc, s) => acc + s.totalBallots, 0) / (stats.reduce((acc, s) => acc + s.totalReg, 0) || 1)) * 100;
+  const turnoutGapValues = stats.map((s) => Math.max(0, countyTurnout - s.turnoutOverall));
+  const registrationValues = stats.map((s) => s.totalReg);
+  const cvapGapValues = stats.map((s) => s.cvapTotal > 0 ? Math.max(0, 100 - s.ballotShareOfCvap) : 0);
+  const declineValues = stats.map((s) => Math.max(0, -(s.turnoutDeltaYoY ?? 0)));
+
+  const turnoutGapMin = Math.min(...turnoutGapValues);
+  const turnoutGapMax = Math.max(...turnoutGapValues);
+  const registrationMin = Math.min(...registrationValues);
+  const registrationMax = Math.max(...registrationValues);
+  const cvapGapMin = Math.min(...cvapGapValues);
+  const cvapGapMax = Math.max(...cvapGapValues);
+  const declineMin = Math.min(...declineValues);
+  const declineMax = Math.max(...declineValues);
+
+  return stats
+    .map((s) => {
+      const turnoutGapNorm = normalizeValue(Math.max(0, countyTurnout - s.turnoutOverall), turnoutGapMin, turnoutGapMax);
+      const registrationMassNorm = normalizeValue(s.totalReg, registrationMin, registrationMax);
+      const cvapGapNorm = normalizeValue(s.cvapTotal > 0 ? Math.max(0, 100 - s.ballotShareOfCvap) : 0, cvapGapMin, cvapGapMax);
+      const declineNorm = normalizeValue(Math.max(0, -(s.turnoutDeltaYoY ?? 0)), declineMin, declineMax);
+      const score = (0.45 * turnoutGapNorm) + (0.25 * registrationMassNorm) + (0.2 * cvapGapNorm) + (0.1 * declineNorm);
+
+      return {
+        precinct: s.precinct,
+        score,
+        turnoutGapNorm,
+        registrationMassNorm,
+        cvapGapNorm,
+        declineNorm,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+};
+
 export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPrecinct, onPrecinctSelect }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<Element, unknown> | null>(null);
   const [geoData, setGeoData] = useState<any>(null);
-  const [hoveredInfo, setHoveredInfo] = useState<{ name: string, stats?: PrecinctStats } | null>(null);
+  const [hoveredInfo, setHoveredInfo] = useState<{ name: string, stats?: PrecinctStats, opportunity?: OpportunityScore } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,20 +95,29 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     return map;
   }, [stats]);
 
-  const opportunityPrecincts = useMemo(() => {
-    if (stats.length < 3) return new Set<string>();
-
-    const turnoutValues = stats.map((s) => s.turnoutOverall).sort((a, b) => a - b);
-    const registrationValues = stats.map((s) => s.totalReg).sort((a, b) => a - b);
-    const turnoutMedian = turnoutValues[Math.floor(turnoutValues.length / 2)] ?? 0;
-    const registrationMedian = registrationValues[Math.floor(registrationValues.length / 2)] ?? 0;
-
-    const opportunities = stats
-      .filter((s) => s.turnoutOverall <= turnoutMedian && s.totalReg >= registrationMedian)
-      .map((s) => normalizePrecinct(s.precinct));
-
-    return new Set(opportunities);
+  const opportunityScoresByPrecinct = useMemo(() => {
+    const scores = computeOpportunityScores(stats);
+    return new Map(scores.map((score) => [normalizePrecinct(score.precinct), score]));
   }, [stats]);
+
+  const opportunityPrecincts = useMemo(() => {
+    const scores = computeOpportunityScores(stats);
+    if (scores.length === 0) return new Set<string>();
+
+    const quartileCount = Math.max(1, Math.ceil(scores.length * 0.25));
+    const topQuartile = scores.slice(0, quartileCount).map((s) => normalizePrecinct(s.precinct));
+    return new Set(topQuartile);
+  }, [stats]);
+
+  const opportunityColorScale = useMemo(() => {
+    const topScores = Array.from(opportunityScoresByPrecinct.values())
+      .filter((score) => opportunityPrecincts.has(normalizePrecinct(score.precinct)))
+      .map((score) => score.score);
+
+    const min = topScores.length > 0 ? Math.min(...topScores) : 0;
+    const max = topScores.length > 0 ? Math.max(...topScores) : 1;
+    return d3.scaleSequential(d3.interpolateOranges).domain([min, Math.max(max, min + 0.0001)]);
+  }, [opportunityPrecincts, opportunityScoresByPrecinct]);
 
   const resetZoom = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -156,7 +218,10 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         const precinctKey = normalizePrecinct(getFeaturePrecinct(d));
         const precinctStats = getPrecinctStats(d);
         if (!precinctStats) return '#f3f4f6';
-        if (showOpportunities && opportunityPrecincts.has(precinctKey)) return '#f59e0b';
+        if (showOpportunities && opportunityPrecincts.has(precinctKey)) {
+          const score = opportunityScoresByPrecinct.get(precinctKey);
+          return opportunityColorScale(score?.score ?? 0);
+        }
         return colorScale(precinctStats.turnoutOverall);
       })
       .attr('opacity', (d: any) => {
@@ -167,13 +232,14 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       .on('mouseover', (event, d: any) => {
         const precinctName = getFeaturePrecinct(d);
         const precinctStats = getPrecinctStats(d);
+        const opportunity = opportunityScoresByPrecinct.get(normalizePrecinct(precinctStats?.precinct || precinctName));
         
         d3.select(event.currentTarget)
           .attr('stroke', '#3b82f6')
           .attr('stroke-width', 2)
           .raise();
           
-        setHoveredInfo({ name: precinctName, stats: precinctStats });
+        setHoveredInfo({ name: precinctName, stats: precinctStats, opportunity });
         setTooltipPos({ x: event.pageX, y: event.pageY });
       })
       .on('mousemove', (event) => {
@@ -219,7 +285,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     zoomBehaviorRef.current = zoom;
     svg.call(zoom as any);
 
-  }, [geoData, opportunityPrecincts, selectedKey, showOpportunities, statsByPrecinct]);
+  }, [geoData, opportunityColorScale, opportunityPrecincts, opportunityScoresByPrecinct, selectedKey, showOpportunities, statsByPrecinct]);
 
   if (isLoading) {
     return (
@@ -286,6 +352,9 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
           >
             {showOpportunities ? 'Opportunity Mode: ON' : 'Opportunity Mode: OFF'}
           </button>
+          <p className="text-[10px] text-gray-500 leading-snug">
+            Opportunity score = turnout gap (45%) + registration mass (25%) + CVAP gap (20%) + recent decline (10%). Top quartile precincts are highlighted.
+          </p>
           <button
             onClick={resetZoom}
             className={cn(
@@ -352,6 +421,18 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
             
             {hoveredInfo.stats && (
               <>
+                <div className="rounded-lg border border-amber-100 bg-amber-50/70 p-2.5">
+                  <p className="text-[10px] font-bold text-amber-800 uppercase">Opportunity Score</p>
+                  <p className="text-sm font-bold text-amber-900">
+                    {hoveredInfo.opportunity ? `${(hoveredInfo.opportunity.score * 100).toFixed(1)} / 100` : 'N/A'}
+                  </p>
+                  {hoveredInfo.opportunity && (
+                    <p className="text-[10px] text-amber-900 mt-1">
+                      Drivers: turnout gap {(hoveredInfo.opportunity.turnoutGapNorm * 100).toFixed(0)}, registration {(hoveredInfo.opportunity.registrationMassNorm * 100).toFixed(0)}, CVAP gap {(hoveredInfo.opportunity.cvapGapNorm * 100).toFixed(0)}.
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase">Registered</p>

@@ -53,6 +53,12 @@ export interface PrecinctStats {
   registrationShareOfCvap: number;
   ballotShareOfCvap: number;
 
+  // Trends
+  turnoutDeltaYoY: number | null;
+  registrationShareOfCvapDeltaYoY: number | null;
+  ballotShareOfCvapDeltaYoY: number | null;
+  trendLabel: 'Improving' | 'Declining' | 'Flat' | 'N/A';
+
   // Density
   densityByRace: Record<string, number>;
 }

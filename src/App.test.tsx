@@ -23,12 +23,18 @@ const MOCK_HISTORY_ROW = {
   election_date: '2024-11-05', voting_method: 'EV', voted_party_cd: 'REP',
   stats_type: 'history', age: 'Age 26 - 40', update_date: '2024-11-25',
 };
+const MOCK_HISTORY_ROW_PREV = {
+  county_desc: 'UNION', precinct_abbrv: '01', party_cd: 'REP',
+  race_code: 'W', ethnic_code: 'NL', sex_code: 'M', total_voters: 5,
+  election_date: '2023-11-07', voting_method: 'EV', voted_party_cd: 'REP',
+  stats_type: 'history', age: 'Age 26 - 40', update_date: '2023-11-25',
+};
 
 describe('App', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       const body = url.includes('union_voter_stats') ? [MOCK_VOTER_ROW]
-        : url.includes('union_history_stats') ? [MOCK_HISTORY_ROW]
+        : url.includes('union_history_stats') ? [MOCK_HISTORY_ROW_PREV, MOCK_HISTORY_ROW]
         : null;
       if (!body) return Promise.reject(new Error(`Unexpected fetch: ${url}`));
       return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
@@ -56,6 +62,7 @@ describe('App', () => {
     expect(screen.getByLabelText(/election year/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/precinct/i)).toBeInTheDocument();
     expect(screen.getByText(/reg \/ cvap/i)).toBeInTheDocument();
+    expect(screen.getByText(/data quality and provenance/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /precinct insights/i })).toBeInTheDocument();
   });
 
@@ -68,6 +75,14 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText(/how-to panel content/i)).toBeInTheDocument();
     });
+  });
+
+  it('shows trend signals with year-over-year turnout deltas', async () => {
+    render(<App />);
+
+    await screen.findByText(/trend signals \(2024 vs 2023\)/i);
+    expect(screen.getByText(/county turnout Δ:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/\+30.00 pts/i).length).toBeGreaterThan(0);
   });
 
   it('rejects unsupported upload file types', async () => {

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { BUILT_IN_DATA_METADATA } from './data/unionCountyBuiltInData';
 import { CVAPRecord, HistoryRecord, PrecinctStats, VoterRecord } from './types';
 
 const ChoroplethMap = lazy(async () => {
@@ -69,6 +70,17 @@ const exportCsvFile = (rows: CsvRow[], filename: string) => {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+};
+
+const formatDeltaPoints = (value: number | null) => {
+  if (value === null) return 'N/A';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)} pts`;
+};
+
+const formatPercent = (value: number | null) => {
+  if (value === null || !Number.isFinite(value)) return 'N/A';
+  return `${value.toFixed(1)}%`;
 };
 
 const validateUploadFile = (file: File) => {
@@ -158,6 +170,13 @@ const normalizeYearValue = (value: unknown) => {
 
   const match = value.match(/(19|20)\d{2}/);
   return match ? Number(match[0]) : YEARLESS_CVAP;
+};
+
+const getTrendLabel = (delta: number | null): 'Improving' | 'Declining' | 'Flat' | 'N/A' => {
+  if (delta === null) return 'N/A';
+  if (delta > 1) return 'Improving';
+  if (delta < -1) return 'Declining';
+  return 'Flat';
 };
 
 const isUnionCountyRow = (row: Record<string, unknown>) => {
@@ -607,9 +626,36 @@ export default function App() {
             cvapTotal,
             registrationShareOfCvap,
             ballotShareOfCvap,
+            turnoutDeltaYoY: null,
+            registrationShareOfCvapDeltaYoY: null,
+            ballotShareOfCvapDeltaYoY: null,
+            trendLabel: 'N/A',
             densityByRace
           });
         }
+      });
+    });
+
+    const statsByPrecinct = new Map<string, PrecinctStats[]>();
+    stats.forEach((row) => {
+      const list = statsByPrecinct.get(row.precinct) || [];
+      list.push(row);
+      statsByPrecinct.set(row.precinct, list);
+    });
+
+    statsByPrecinct.forEach((rows) => {
+      const byYear = new Map(rows.map((row) => [row.year, row]));
+      rows.forEach((row) => {
+        const prior = byYear.get(row.year - 1);
+        if (!prior) {
+          row.trendLabel = 'N/A';
+          return;
+        }
+
+        row.turnoutDeltaYoY = row.turnoutOverall - prior.turnoutOverall;
+        row.registrationShareOfCvapDeltaYoY = row.registrationShareOfCvap - prior.registrationShareOfCvap;
+        row.ballotShareOfCvapDeltaYoY = row.ballotShareOfCvap - prior.ballotShareOfCvap;
+        row.trendLabel = getTrendLabel(row.turnoutDeltaYoY);
       });
     });
 
@@ -843,16 +889,95 @@ export default function App() {
     return totalCvap > 0 ? (totalRegistered / totalCvap) * 100 : 0;
   }, [filteredStats]);
 
+  const improvingPrecincts = useMemo(() => {
+    return [...currentYearStats]
+      .filter((s) => s.turnoutDeltaYoY !== null)
+      .sort((a, b) => (b.turnoutDeltaYoY || 0) - (a.turnoutDeltaYoY || 0))
+      .slice(0, 5);
+  }, [currentYearStats]);
+
+  const decliningPrecincts = useMemo(() => {
+    return [...currentYearStats]
+      .filter((s) => s.turnoutDeltaYoY !== null)
+      .sort((a, b) => (a.turnoutDeltaYoY || 0) - (b.turnoutDeltaYoY || 0))
+      .slice(0, 5);
+  }, [currentYearStats]);
+
+  const cvapGainPrecincts = useMemo(() => {
+    return [...currentYearStats]
+      .filter((s) => s.ballotShareOfCvapDeltaYoY !== null)
+      .sort((a, b) => (b.ballotShareOfCvapDeltaYoY || 0) - (a.ballotShareOfCvapDeltaYoY || 0))
+      .slice(0, 5);
+  }, [currentYearStats]);
+
+  const countyTurnoutDeltaYoY = useMemo(() => {
+    const previousYearStats = processedStats.filter((s) => s.year === selectedYear - 1);
+    if (currentYearStats.length === 0 || previousYearStats.length === 0) return null;
+
+    const currentTurnout = (currentYearStats.reduce((acc, s) => acc + s.totalBallots, 0) / (currentYearStats.reduce((acc, s) => acc + s.totalReg, 0) || 1)) * 100;
+    const previousTurnout = (previousYearStats.reduce((acc, s) => acc + s.totalBallots, 0) / (previousYearStats.reduce((acc, s) => acc + s.totalReg, 0) || 1)) * 100;
+    return currentTurnout - previousTurnout;
+  }, [currentYearStats, processedStats, selectedYear]);
+
+  const countyBallotsCvapDeltaYoY = useMemo(() => {
+    const previousYearStats = processedStats.filter((s) => s.year === selectedYear - 1);
+    if (currentYearStats.length === 0 || previousYearStats.length === 0) return null;
+
+    const currentBallots = currentYearStats.reduce((acc, s) => acc + s.totalBallots, 0);
+    const currentCvap = currentYearStats.reduce((acc, s) => acc + s.cvapTotal, 0);
+    const previousBallots = previousYearStats.reduce((acc, s) => acc + s.totalBallots, 0);
+    const previousCvap = previousYearStats.reduce((acc, s) => acc + s.cvapTotal, 0);
+
+    const currentBallotShare = currentCvap > 0 ? (currentBallots / currentCvap) * 100 : 0;
+    const previousBallotShare = previousCvap > 0 ? (previousBallots / previousCvap) * 100 : 0;
+    return currentBallotShare - previousBallotShare;
+  }, [currentYearStats, processedStats, selectedYear]);
+
+  const voterSuccessRate = useMemo(() => {
+    if (!voterUploadSummary || voterUploadSummary.parsedRows === 0) return null;
+    return (voterUploadSummary.usableRows / voterUploadSummary.parsedRows) * 100;
+  }, [voterUploadSummary]);
+
+  const historySuccessRate = useMemo(() => {
+    if (!historyUploadSummary || historyUploadSummary.parsedRows === 0) return null;
+    return (historyUploadSummary.usableRows / historyUploadSummary.parsedRows) * 100;
+  }, [historyUploadSummary]);
+
+  const cvapSuccessRate = useMemo(() => {
+    if (!cvapUploadSummary || cvapUploadSummary.parsedRows === 0) return null;
+    return (cvapUploadSummary.usableRows / cvapUploadSummary.parsedRows) * 100;
+  }, [cvapUploadSummary]);
+
+  const precinctYearCoverage = useMemo(() => {
+    const uniquePrecincts = new Set([
+      ...voterData.map((row) => row.precinct_abbrv),
+      ...historyData.map((row) => row.precinct_abbrv),
+    ].filter(Boolean));
+
+    if (uniquePrecincts.size === 0) return null;
+    const expectedRows = uniquePrecincts.size * YEARS.length;
+    return expectedRows > 0 ? (processedStats.length / expectedRows) * 100 : null;
+  }, [historyData, processedStats, voterData]);
+
+  const cvapMatchRate = useMemo(() => {
+    if (!cvapMatchSummary || cvapMatchSummary.totalRows === 0) return null;
+    return (cvapMatchSummary.matchedRows / cvapMatchSummary.totalRows) * 100;
+  }, [cvapMatchSummary]);
+
   const exportSummaryCsv = () => {
     const rows = filteredStats.map(s => ({
       Year: s.year,
       Precinct: s.precinct,
+      Trend: s.trendLabel,
       CVAP: s.cvapTotal || '',
       'Total Registered': s.totalReg,
       'Registered / CVAP %': s.cvapTotal > 0 ? s.registrationShareOfCvap.toFixed(2) : '',
+      'Registered / CVAP Δ YoY (pts)': s.registrationShareOfCvapDeltaYoY !== null ? s.registrationShareOfCvapDeltaYoY.toFixed(2) : '',
       'Total Ballots': s.totalBallots,
       'Turnout %': s.turnoutOverall.toFixed(2),
+      'Turnout Δ YoY (pts)': s.turnoutDeltaYoY !== null ? s.turnoutDeltaYoY.toFixed(2) : '',
       'Ballots / CVAP %': s.cvapTotal > 0 ? s.ballotShareOfCvap.toFixed(2) : '',
+      'Ballots / CVAP Δ YoY (pts)': s.ballotShareOfCvapDeltaYoY !== null ? s.ballotShareOfCvapDeltaYoY.toFixed(2) : '',
       ...Object.fromEntries(RACE_CODES.map(r => [`Reg ${r}`, s.regByRace[r] || 0])),
       ...Object.fromEntries(PARTY_CODES.map(p => [`Reg ${p}`, s.regByParty[p] || 0])),
       ...Object.fromEntries(GENDER_CODES.map(g => [`Reg ${g}`, s.regByGender[g] || 0])),
@@ -1187,6 +1312,99 @@ export default function App() {
                 />
               </div>
 
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">Trend Signals ({selectedYear} vs {selectedYear - 1})</h3>
+                  <div className="text-sm font-medium text-gray-600">
+                    County Turnout Δ: <span className="font-bold text-gray-900">{formatDeltaPoints(countyTurnoutDeltaYoY)}</span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    Ballots/CVAP Δ: <span className="font-bold text-gray-900">{formatDeltaPoints(countyBallotsCvapDeltaYoY)}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Top Improving Turnout</p>
+                    <div className="mt-3 space-y-2 text-sm">
+                      {improvingPrecincts.length > 0 ? improvingPrecincts.map((stat) => (
+                        <div key={`up-${stat.precinct}`} className="flex items-center justify-between">
+                          <span className="font-semibold text-emerald-900">{stat.precinct}</span>
+                          <span className="font-bold text-emerald-800">{formatDeltaPoints(stat.turnoutDeltaYoY)}</span>
+                        </div>
+                      )) : <p className="text-emerald-800">No prior-year comparison available.</p>}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-rose-100 bg-rose-50/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-rose-700">Largest Turnout Declines</p>
+                    <div className="mt-3 space-y-2 text-sm">
+                      {decliningPrecincts.length > 0 ? decliningPrecincts.map((stat) => (
+                        <div key={`down-${stat.precinct}`} className="flex items-center justify-between">
+                          <span className="font-semibold text-rose-900">{stat.precinct}</span>
+                          <span className="font-bold text-rose-800">{formatDeltaPoints(stat.turnoutDeltaYoY)}</span>
+                        </div>
+                      )) : <p className="text-rose-800">No prior-year comparison available.</p>}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Best Ballots/CVAP Gains</p>
+                    <div className="mt-3 space-y-2 text-sm">
+                      {cvapGainPrecincts.length > 0 ? cvapGainPrecincts.map((stat) => (
+                        <div key={`cvap-${stat.precinct}`} className="flex items-center justify-between">
+                          <span className="font-semibold text-blue-900">{stat.precinct}</span>
+                          <span className="font-bold text-blue-800">{formatDeltaPoints(stat.ballotShareOfCvapDeltaYoY)}</span>
+                        </div>
+                      )) : <p className="text-blue-800">No prior-year comparison available.</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">Data Quality and Provenance</h3>
+                  <p className="text-xs text-gray-500">Built-in source: {BUILT_IN_DATA_METADATA.source}</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Voter Parse Success</p>
+                    <p className="mt-1 text-xl font-bold text-blue-900">{formatPercent(voterSuccessRate)}</p>
+                  </div>
+                  <div className="rounded-lg border border-purple-100 bg-purple-50/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-purple-700">History Parse Success</p>
+                    <p className="mt-1 text-xl font-bold text-purple-900">{formatPercent(historySuccessRate)}</p>
+                  </div>
+                  <div className="rounded-lg border border-orange-100 bg-orange-50/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-orange-700">CVAP Parse Success</p>
+                    <p className="mt-1 text-xl font-bold text-orange-900">{formatPercent(cvapSuccessRate)}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-700">Precinct-Year Coverage</p>
+                    <p className="mt-1 text-xl font-bold text-slate-900">{formatPercent(precinctYearCoverage)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-xs uppercase tracking-wider font-bold text-gray-500">CVAP Match Rate</p>
+                    <p className="mt-1 font-semibold text-gray-900">{formatPercent(cvapMatchRate)}</p>
+                    <p className="text-xs text-gray-500 mt-1">Matched rows over uploaded CVAP rows.</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-xs uppercase tracking-wider font-bold text-gray-500">Data Freshness</p>
+                    <p className="mt-1 font-semibold text-gray-900">{new Date(BUILT_IN_DATA_METADATA.generatedAtUtc).toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 mt-1">Generated UTC: {BUILT_IN_DATA_METADATA.generatedAtUtc}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-xs uppercase tracking-wider font-bold text-gray-500">Election Coverage</p>
+                    <p className="mt-1 font-semibold text-gray-900">{BUILT_IN_DATA_METADATA.electionsIncluded.join(', ')}</p>
+                    <p className="text-xs text-gray-500 mt-1">Built-in CVAP included: {BUILT_IN_DATA_METADATA.cvapIncluded ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Map Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-4">
@@ -1244,12 +1462,16 @@ export default function App() {
                                   const data = [
                                     { Metric: 'Year', Value: s.year },
                                     { Metric: 'Precinct', Value: s.precinct },
+                                    { Metric: 'Trend', Value: s.trendLabel },
                                     { Metric: 'CVAP', Value: s.cvapTotal || '' },
                                     { Metric: 'Total Registered', Value: s.totalReg },
                                     { Metric: 'Registered / CVAP %', Value: s.cvapTotal > 0 ? s.registrationShareOfCvap.toFixed(2) : '' },
+                                    { Metric: 'Registered / CVAP Δ YoY (pts)', Value: s.registrationShareOfCvapDeltaYoY !== null ? s.registrationShareOfCvapDeltaYoY.toFixed(2) : '' },
                                     { Metric: 'Total Ballots Cast', Value: s.totalBallots },
                                     { Metric: 'Overall Turnout %', Value: s.turnoutOverall.toFixed(2) },
+                                    { Metric: 'Turnout Δ YoY (pts)', Value: s.turnoutDeltaYoY !== null ? s.turnoutDeltaYoY.toFixed(2) : '' },
                                     { Metric: 'Ballots / CVAP %', Value: s.cvapTotal > 0 ? s.ballotShareOfCvap.toFixed(2) : '' },
+                                    { Metric: 'Ballots / CVAP Δ YoY (pts)', Value: s.ballotShareOfCvapDeltaYoY !== null ? s.ballotShareOfCvapDeltaYoY.toFixed(2) : '' },
                                     ...RACE_CODES.map(r => ({ Metric: `Reg Race ${r}`, Value: s.regByRace[r] || 0 })),
                                     ...PARTY_CODES.map(p => ({ Metric: `Reg Party ${p}`, Value: s.regByParty[p] || 0 })),
                                     ...GENDER_CODES.map(g => ({ Metric: `Reg Gender ${g}`, Value: s.regByGender[g] || 0 })),
@@ -1274,6 +1496,7 @@ export default function App() {
                             </div>
 
                             <div className="space-y-4">
+                                <p className="text-sm text-gray-500 mt-1">Trend: <span className="font-semibold text-gray-700">{filteredStats[0].trendLabel}</span> ({formatDeltaPoints(filteredStats[0].turnoutDeltaYoY)})</p>
                               <h5 className="text-sm font-bold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2">CVAP Coverage</h5>
                               {filteredStats[0].cvapTotal > 0 ? (
                                 <div className="grid grid-cols-2 gap-3">
@@ -1362,6 +1585,8 @@ export default function App() {
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. / CVAP</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Ballots Cast</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Turnout %</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Turnout Δ YoY</th>
+                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Trend</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. REP</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. DEM</th>
                         <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. UNA</th>
@@ -1385,6 +1610,17 @@ export default function App() {
                               s.turnoutOverall > 40 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
                             )}>
                               {s.turnoutOverall.toFixed(2)}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{formatDeltaPoints(s.turnoutDeltaYoY)}</td>
+                          <td className="px-6 py-4">
+                            <span className={cn(
+                              "px-2.5 py-1 rounded-full text-xs font-bold",
+                              s.trendLabel === 'Improving' ? 'bg-emerald-100 text-emerald-700' :
+                              s.trendLabel === 'Declining' ? 'bg-rose-100 text-rose-700' :
+                              s.trendLabel === 'Flat' ? 'bg-slate-100 text-slate-700' : 'bg-gray-100 text-gray-500'
+                            )}>
+                              {s.trendLabel}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">{(s.regByParty['REP'] || 0).toLocaleString()}</td>
@@ -1417,6 +1653,8 @@ export default function App() {
                               {(currentYearStats.reduce((acc, s) => acc + s.totalBallots, 0) / (currentYearStats.reduce((acc, s) => acc + s.totalReg, 0) || 1) * 100).toFixed(2)}%
                             </span>
                           </td>
+                          <td className="px-6 py-4 text-sm text-blue-900">{formatDeltaPoints(countyTurnoutDeltaYoY)}</td>
+                          <td className="px-6 py-4 text-sm text-blue-900">County Aggregate</td>
                           <td className="px-6 py-4 text-sm text-blue-900">
                             {currentYearStats.reduce((acc, s) => acc + (s.regByParty['REP'] || 0), 0).toLocaleString()}
                           </td>
@@ -1439,7 +1677,7 @@ export default function App() {
                       )}
                       {filteredStats.length === 0 && (
                         <tr>
-                          <td colSpan={12} className="px-6 py-12 text-center text-gray-500">
+                          <td colSpan={14} className="px-6 py-12 text-center text-gray-500">
                             <div className="flex flex-col items-center gap-2">
                               <Search size={32} className="text-gray-300" />
                               <p className="font-medium">No data available for the selected filters.</p>

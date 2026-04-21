@@ -411,6 +411,7 @@ export default function App() {
     }
     return 'ALL';
   });
+  const [selectedOpportunityTargets, setSelectedOpportunityTargets] = useState<string[]>([]);
 
   // --- Data Processing ---
 
@@ -761,6 +762,11 @@ export default function App() {
     if (opportunityActionFilter === 'ALL') return opportunityTargets;
     return opportunityTargets.filter((target) => target.actionCategory === opportunityActionFilter);
   }, [opportunityActionFilter, opportunityTargets]);
+
+  useEffect(() => {
+    const visiblePrecincts = new Set(filteredOpportunityTargets.map((target) => target.precinct));
+    setSelectedOpportunityTargets((previous) => previous.filter((precinct) => visiblePrecincts.has(precinct)));
+  }, [filteredOpportunityTargets]);
 
   const opportunityScoreByPrecinct = useMemo(() => {
     const scores = computeOpportunityScores(currentYearStats);
@@ -1386,6 +1392,31 @@ export default function App() {
 
     exportCsvFile(rows, `opportunity_targets_${selectedYear}.csv`);
     setScenarioNotice({ type: 'success', message: `Exported ${filteredOpportunityTargets.length} opportunity target rows for ${selectedYear}.` });
+  };
+
+  const exportSelectedOpportunityTargetsCsv = () => {
+    const selectedRows = filteredOpportunityTargets.filter((target) => selectedOpportunityTargets.includes(target.precinct));
+    if (selectedRows.length === 0) {
+      setScenarioNotice({ type: 'error', message: 'Select at least one opportunity target to export.' });
+      return;
+    }
+
+    const rows = selectedRows.map((target) => ({
+      Year: selectedYear,
+      Rank: target.rank,
+      Precinct: target.precinct,
+      'Recommended Action': target.actionCategory,
+      'Opportunity Score (0-100)': (target.score * 100).toFixed(1),
+      'Turnout Gap Driver (0-100)': (target.turnoutGap * 100).toFixed(0),
+      'Registration Mass Driver (0-100)': (target.registrationMass * 100).toFixed(0),
+      'CVAP Gap Driver (0-100)': (target.cvapGap * 100).toFixed(0),
+      'Recent Decline Driver (0-100)': (target.recentDecline * 100).toFixed(0),
+      'Precinct Filter': selectedPrecinct,
+      'Action Filter': opportunityActionFilter,
+    }));
+
+    exportCsvFile(rows, `opportunity_targets_selected_${selectedYear}.csv`);
+    setScenarioNotice({ type: 'success', message: `Exported ${selectedRows.length} selected opportunity targets.` });
   };
 
   const exportFocusedFieldPacketCsv = () => {
@@ -2096,6 +2127,38 @@ export default function App() {
                     >
                       Export Targets CSV
                     </button>
+                    <button
+                      onClick={exportSelectedOpportunityTargetsCsv}
+                      disabled={selectedOpportunityTargets.length === 0 || isProcessing}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                        selectedOpportunityTargets.length === 0 || isProcessing
+                          ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                          : "bg-slate-600 text-white hover:bg-slate-700"
+                      )}
+                    >
+                      Export Selected CSV
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold">Selected targets: {selectedOpportunityTargets.length}</span>
+                    <button
+                      onClick={() => setSelectedOpportunityTargets(filteredOpportunityTargets.map((target) => target.precinct))}
+                      disabled={filteredOpportunityTargets.length === 0}
+                      className="font-semibold text-blue-700 hover:text-blue-800 disabled:text-gray-400"
+                    >
+                      Select all visible
+                    </button>
+                    <button
+                      onClick={() => setSelectedOpportunityTargets([])}
+                      disabled={selectedOpportunityTargets.length === 0}
+                      className="font-semibold text-gray-700 hover:text-gray-900 disabled:text-gray-400"
+                    >
+                      Clear
+                    </button>
                   </div>
                 </div>
 
@@ -2106,6 +2169,7 @@ export default function App() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Select</th>
                           <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Rank</th>
                           <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Precinct</th>
                           <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Score</th>
@@ -2120,6 +2184,20 @@ export default function App() {
                       <tbody className="divide-y divide-gray-100">
                         {filteredOpportunityTargets.map((target) => (
                           <tr key={`target-${target.precinct}`} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                aria-label={`Select target ${target.precinct}`}
+                                checked={selectedOpportunityTargets.includes(target.precinct)}
+                                onChange={(event) => {
+                                  if (event.target.checked) {
+                                    setSelectedOpportunityTargets((previous) => Array.from(new Set([...previous, target.precinct])));
+                                  } else {
+                                    setSelectedOpportunityTargets((previous) => previous.filter((precinct) => precinct !== target.precinct));
+                                  }
+                                }}
+                              />
+                            </td>
                             <td className="px-4 py-3 text-sm font-bold text-gray-800">{target.rank}</td>
                             <td className="px-4 py-3 text-sm font-semibold text-gray-900">{target.precinct}</td>
                             <td className="px-4 py-3 text-sm text-gray-800">{(target.score * 100).toFixed(1)}</td>

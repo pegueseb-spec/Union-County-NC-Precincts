@@ -69,6 +69,8 @@ describe('App', () => {
     expect(screen.getByText(/data quality alerts/i)).toBeInTheDocument();
     expect(screen.getByText(/recommended action/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export targets csv/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /export selected csv/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /select all visible/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copy assumptions/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export planning bundle csv/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export scenario csv/i })).toBeInTheDocument();

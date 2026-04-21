@@ -154,6 +154,7 @@ Use Opportunity Targets (Top Quartile) to operationalize map highlights quickly:
 4. Use Export Targets CSV to distribute ranked target lists across field teams
 5. Use Recommended Action to assign first-pass field strategy per target precinct
 6. Apply Action Filter to export a strategy-specific target pack (for example only GOTV Chase)
+7. Use Select all visible, checkboxes, and Export Selected CSV to distribute only assigned target subsets
 
 ## Focused Field Packet
 

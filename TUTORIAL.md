@@ -145,6 +145,14 @@ Use Opportunity Targets (Top Quartile) to operationalize map highlights quickly:
 5. Use Recommended Action to assign first-pass field strategy per target precinct
 6. Apply Action Filter to export a strategy-specific target pack (for example only GOTV Chase)
 
+## Focused Field Packet
+
+When you have selected a specific precinct:
+
+1. Use Export Field Packet in Precinct Insights
+2. Share the packet CSV with organizers as a single precinct brief
+3. The packet includes assumptions, core metrics, projected ballots, and recommended action
+
 Notes:
 
 - Projection caps ballots at registered voters in each precinct

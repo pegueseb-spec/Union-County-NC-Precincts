@@ -724,6 +724,11 @@ export default function App() {
     return opportunityTargets.filter((target) => target.actionCategory === opportunityActionFilter);
   }, [opportunityActionFilter, opportunityTargets]);
 
+  const opportunityScoreByPrecinct = useMemo(() => {
+    const scores = computeOpportunityScores(currentYearStats);
+    return new Map(scores.map((score) => [score.precinct, score.score]));
+  }, [currentYearStats]);
+
   const filteredStats = useMemo(() => {
     return processedStats.filter(s => {
       const yearMatch = s.year === selectedYear;
@@ -1263,6 +1268,97 @@ export default function App() {
 
     exportCsvFile(rows, `opportunity_targets_${selectedYear}.csv`);
     setScenarioNotice({ type: 'success', message: `Exported ${filteredOpportunityTargets.length} opportunity target rows for ${selectedYear}.` });
+  };
+
+  const exportFocusedFieldPacketCsv = () => {
+    if (selectedPrecinct === 'ALL' || !filteredStats[0]) {
+      setScenarioNotice({ type: 'error', message: 'Select a precinct to export a focused field packet.' });
+      return;
+    }
+
+    const stat = filteredStats[0];
+    const projectedBallots = Math.min(stat.totalReg, stat.totalBallots * (1 + scenarioTurnoutLiftPct / 100));
+    const projectedTurnoutPct = stat.totalReg > 0 ? (projectedBallots / stat.totalReg) * 100 : 0;
+    const additionalBallots = Math.max(projectedBallots - stat.totalBallots, 0);
+    const actionCategory = getRecommendedActionCategory(stat.registrationShareOfCvap, stat.turnoutOverall, stat.turnoutDeltaYoY);
+    const opportunityScore = opportunityScoreByPrecinct.get(stat.precinct) ?? null;
+    const generatedAt = new Date().toISOString();
+
+    const rows = [
+      {
+        RowType: 'Packet Metadata',
+        Metric: 'Generated At (UTC)',
+        Value: generatedAt,
+      },
+      {
+        RowType: 'Packet Metadata',
+        Metric: 'Selected Year',
+        Value: selectedYear,
+      },
+      {
+        RowType: 'Packet Metadata',
+        Metric: 'Precinct',
+        Value: stat.precinct,
+      },
+      {
+        RowType: 'Packet Metadata',
+        Metric: 'Turnout Lift Assumption %',
+        Value: scenarioTurnoutLiftPct.toFixed(1),
+      },
+      {
+        RowType: 'Precinct Summary',
+        Metric: 'Opportunity Score (0-100)',
+        Value: opportunityScore !== null ? (opportunityScore * 100).toFixed(1) : 'N/A',
+      },
+      {
+        RowType: 'Precinct Summary',
+        Metric: 'Recommended Action',
+        Value: actionCategory,
+      },
+      {
+        RowType: 'Precinct Summary',
+        Metric: 'Total Registered',
+        Value: stat.totalReg,
+      },
+      {
+        RowType: 'Precinct Summary',
+        Metric: 'Total Ballots',
+        Value: stat.totalBallots,
+      },
+      {
+        RowType: 'Precinct Summary',
+        Metric: 'Turnout %',
+        Value: stat.turnoutOverall.toFixed(2),
+      },
+      {
+        RowType: 'Precinct Summary',
+        Metric: 'Turnout Δ YoY (pts)',
+        Value: stat.turnoutDeltaYoY !== null ? stat.turnoutDeltaYoY.toFixed(2) : 'N/A',
+      },
+      {
+        RowType: 'Precinct Summary',
+        Metric: 'Registered / CVAP %',
+        Value: stat.cvapTotal > 0 ? stat.registrationShareOfCvap.toFixed(2) : 'N/A',
+      },
+      {
+        RowType: 'Scenario Projection',
+        Metric: 'Projected Ballots',
+        Value: Math.round(projectedBallots),
+      },
+      {
+        RowType: 'Scenario Projection',
+        Metric: 'Projected Turnout %',
+        Value: projectedTurnoutPct.toFixed(2),
+      },
+      {
+        RowType: 'Scenario Projection',
+        Metric: 'Estimated Additional Ballots',
+        Value: Math.round(additionalBallots),
+      },
+    ];
+
+    exportCsvFile(rows, `field_packet_${stat.precinct}_${selectedYear}.csv`);
+    setScenarioNotice({ type: 'success', message: `Exported focused field packet for precinct ${stat.precinct}.` });
   };
 
   return (
@@ -1952,6 +2048,20 @@ export default function App() {
                               >
                                 <Download size={16} />
                                 Export CSV
+                              </button>
+                              <button
+                                onClick={exportFocusedFieldPacketCsv}
+                                disabled={isProcessing}
+                                className={cn(
+                                  "p-2 rounded-lg transition-all shadow-sm flex items-center gap-2 text-xs font-bold",
+                                  isProcessing
+                                    ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                                    : "bg-slate-100 text-slate-700 hover:bg-slate-700 hover:text-white"
+                                )}
+                                title="Export Focused Field Packet"
+                              >
+                                <FileDown size={16} />
+                                Export Field Packet
                               </button>
                             </div>
 

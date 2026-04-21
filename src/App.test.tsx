@@ -107,4 +107,14 @@ describe('App', () => {
 
     expect(await screen.findByText(/upload rejected: only .txt and .csv files are accepted/i)).toBeInTheDocument();
   });
+
+  it('shows focused field packet export when a precinct is selected', async () => {
+    render(<App />);
+
+    await screen.findByText(/turnout choropleth map/i);
+    const precinctSelect = screen.getByLabelText(/^precinct$/i);
+    fireEvent.change(precinctSelect, { target: { value: '01' } });
+
+    expect(await screen.findByRole('button', { name: /export field packet/i })).toBeInTheDocument();
+  });
 });

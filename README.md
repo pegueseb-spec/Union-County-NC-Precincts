@@ -28,6 +28,7 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Suggests recommended action categories per target (registration growth, persuasion, GOTV chase, election-day logistics)
 - Adds an action filter to isolate and export one strategy lane at a time
 - Exports Opportunity Targets rankings to CSV for direct field handoff
+- Adds focused field packet export for selected precincts (summary + scenario + recommended action)
 - Exports the filtered dashboard view as CSV
 
 ## Run Locally

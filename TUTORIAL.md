@@ -87,6 +87,8 @@ Also use Opportunity Mode on the map:
 - Opportunity score now combines turnout gap, registration mass, CVAP gap, and recent decline
 - Highlighted precincts represent the top quartile of score values for the selected year
 - Darker orange indicates higher relative priority among highlighted precincts
+- You can adjust score weights in-map to match strategy (for example: persuasion-heavy vs turnout-rescue)
+- Use Reset score weights to restore the default balanced model
 
 ### Step 4: Build action categories
 

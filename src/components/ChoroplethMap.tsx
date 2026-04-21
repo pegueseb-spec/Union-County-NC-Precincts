@@ -20,14 +20,48 @@ type OpportunityScore = {
   declineNorm: number;
 };
 
+type OpportunityWeights = {
+  turnoutGap: number;
+  registrationMass: number;
+  cvapGap: number;
+  recentDecline: number;
+};
+
+const DEFAULT_OPPORTUNITY_WEIGHTS: OpportunityWeights = {
+  turnoutGap: 45,
+  registrationMass: 25,
+  cvapGap: 20,
+  recentDecline: 10,
+};
+
 const normalizeValue = (value: number, min: number, max: number) => {
   if (!Number.isFinite(value)) return 0;
   if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 0;
   return (value - min) / (max - min);
 };
 
-export const computeOpportunityScores = (stats: PrecinctStats[]): OpportunityScore[] => {
+const normalizeWeights = (weights: OpportunityWeights): OpportunityWeights => {
+  const total = weights.turnoutGap + weights.registrationMass + weights.cvapGap + weights.recentDecline;
+  if (total <= 0) {
+    return {
+      turnoutGap: 0.25,
+      registrationMass: 0.25,
+      cvapGap: 0.25,
+      recentDecline: 0.25,
+    };
+  }
+
+  return {
+    turnoutGap: weights.turnoutGap / total,
+    registrationMass: weights.registrationMass / total,
+    cvapGap: weights.cvapGap / total,
+    recentDecline: weights.recentDecline / total,
+  };
+};
+
+export const computeOpportunityScores = (stats: PrecinctStats[], weights: OpportunityWeights = DEFAULT_OPPORTUNITY_WEIGHTS): OpportunityScore[] => {
   if (stats.length === 0) return [];
+  const normalizedWeights = normalizeWeights(weights);
 
   const countyTurnout = (stats.reduce((acc, s) => acc + s.totalBallots, 0) / (stats.reduce((acc, s) => acc + s.totalReg, 0) || 1)) * 100;
   const turnoutGapValues = stats.map((s) => Math.max(0, countyTurnout - s.turnoutOverall));
@@ -50,7 +84,10 @@ export const computeOpportunityScores = (stats: PrecinctStats[]): OpportunitySco
       const registrationMassNorm = normalizeValue(s.totalReg, registrationMin, registrationMax);
       const cvapGapNorm = normalizeValue(s.cvapTotal > 0 ? Math.max(0, 100 - s.ballotShareOfCvap) : 0, cvapGapMin, cvapGapMax);
       const declineNorm = normalizeValue(Math.max(0, -(s.turnoutDeltaYoY ?? 0)), declineMin, declineMax);
-      const score = (0.45 * turnoutGapNorm) + (0.25 * registrationMassNorm) + (0.2 * cvapGapNorm) + (0.1 * declineNorm);
+      const score = (normalizedWeights.turnoutGap * turnoutGapNorm)
+        + (normalizedWeights.registrationMass * registrationMassNorm)
+        + (normalizedWeights.cvapGap * cvapGapNorm)
+        + (normalizedWeights.recentDecline * declineNorm);
 
       return {
         precinct: s.precinct,
@@ -73,6 +110,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOpportunities, setShowOpportunities] = useState(false);
+  const [opportunityWeights, setOpportunityWeights] = useState<OpportunityWeights>(DEFAULT_OPPORTUNITY_WEIGHTS);
   const mapFetchTimeoutMs = 15000;
 
   const normalizePrecinct = (value: unknown) => String(value ?? '').trim().toUpperCase().replace(/^0+/, '');
@@ -95,19 +133,21 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     return map;
   }, [stats]);
 
+  const normalizedOpportunityWeights = useMemo(() => normalizeWeights(opportunityWeights), [opportunityWeights]);
+
   const opportunityScoresByPrecinct = useMemo(() => {
-    const scores = computeOpportunityScores(stats);
+    const scores = computeOpportunityScores(stats, opportunityWeights);
     return new Map(scores.map((score) => [normalizePrecinct(score.precinct), score]));
-  }, [stats]);
+  }, [opportunityWeights, stats]);
 
   const opportunityPrecincts = useMemo(() => {
-    const scores = computeOpportunityScores(stats);
+    const scores = computeOpportunityScores(stats, opportunityWeights);
     if (scores.length === 0) return new Set<string>();
 
     const quartileCount = Math.max(1, Math.ceil(scores.length * 0.25));
     const topQuartile = scores.slice(0, quartileCount).map((s) => normalizePrecinct(s.precinct));
     return new Set(topQuartile);
-  }, [stats]);
+  }, [opportunityWeights, stats]);
 
   const opportunityColorScale = useMemo(() => {
     const topScores = Array.from(opportunityScoresByPrecinct.values())
@@ -353,8 +393,72 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
             {showOpportunities ? 'Opportunity Mode: ON' : 'Opportunity Mode: OFF'}
           </button>
           <p className="text-[10px] text-gray-500 leading-snug">
-            Opportunity score = turnout gap (45%) + registration mass (25%) + CVAP gap (20%) + recent decline (10%). Top quartile precincts are highlighted.
+            Opportunity score uses custom weights. Top quartile precincts are highlighted.
           </p>
+          <div className="rounded-md border border-amber-100 bg-amber-50/70 p-2 space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-amber-900">
+              <span>Turnout Gap</span>
+              <span>{(normalizedOpportunityWeights.turnoutGap * 100).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={opportunityWeights.turnoutGap}
+              onChange={(event) => setOpportunityWeights((prev) => ({ ...prev, turnoutGap: Number(event.target.value) }))}
+              aria-label="Opportunity weight turnout gap"
+              className="w-full"
+            />
+
+            <div className="flex items-center justify-between text-[10px] font-semibold text-amber-900">
+              <span>Registration Mass</span>
+              <span>{(normalizedOpportunityWeights.registrationMass * 100).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={opportunityWeights.registrationMass}
+              onChange={(event) => setOpportunityWeights((prev) => ({ ...prev, registrationMass: Number(event.target.value) }))}
+              aria-label="Opportunity weight registration mass"
+              className="w-full"
+            />
+
+            <div className="flex items-center justify-between text-[10px] font-semibold text-amber-900">
+              <span>CVAP Gap</span>
+              <span>{(normalizedOpportunityWeights.cvapGap * 100).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={opportunityWeights.cvapGap}
+              onChange={(event) => setOpportunityWeights((prev) => ({ ...prev, cvapGap: Number(event.target.value) }))}
+              aria-label="Opportunity weight CVAP gap"
+              className="w-full"
+            />
+
+            <div className="flex items-center justify-between text-[10px] font-semibold text-amber-900">
+              <span>Recent Decline</span>
+              <span>{(normalizedOpportunityWeights.recentDecline * 100).toFixed(0)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={opportunityWeights.recentDecline}
+              onChange={(event) => setOpportunityWeights((prev) => ({ ...prev, recentDecline: Number(event.target.value) }))}
+              aria-label="Opportunity weight recent decline"
+              className="w-full"
+            />
+
+            <button
+              onClick={() => setOpportunityWeights(DEFAULT_OPPORTUNITY_WEIGHTS)}
+              className="w-full px-2 py-1.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-900 hover:bg-amber-200"
+            >
+              Reset score weights
+            </button>
+          </div>
           <button
             onClick={resetZoom}
             className={cn(

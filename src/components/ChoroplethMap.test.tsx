@@ -47,4 +47,27 @@ describe('computeOpportunityScores', () => {
   it('returns empty list when no stats are provided', () => {
     expect(computeOpportunityScores([])).toEqual([]);
   });
+
+  it('supports custom score weights for strategy tuning', () => {
+    const stats: PrecinctStats[] = [
+      makeStat({ precinct: 'LOW_TURNOUT', totalReg: 700, totalBallots: 245, turnoutOverall: 35, ballotShareOfCvap: 20, turnoutDeltaYoY: 0 }),
+      makeStat({ precinct: 'DECLINING', totalReg: 500, totalBallots: 250, turnoutOverall: 50, ballotShareOfCvap: 28, turnoutDeltaYoY: -10 }),
+    ];
+
+    const turnoutWeighted = computeOpportunityScores(stats, {
+      turnoutGap: 70,
+      registrationMass: 20,
+      cvapGap: 10,
+      recentDecline: 0,
+    });
+    expect(turnoutWeighted[0].precinct).toBe('LOW_TURNOUT');
+
+    const declineWeighted = computeOpportunityScores(stats, {
+      turnoutGap: 10,
+      registrationMass: 10,
+      cvapGap: 10,
+      recentDecline: 70,
+    });
+    expect(declineWeighted[0].precinct).toBe('DECLINING');
+  });
 });

@@ -16,6 +16,7 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Computes year-over-year trend deltas for turnout and CVAP conversion
 - Displays precinct-level stats and a choropleth map
 - Highlights top-quartile opportunity precincts using a weighted score model
+- Lets organizers tune opportunity-score weights directly in the map controls
 - Shows data quality and provenance indicators (parse success, coverage, freshness)
 - Exports the filtered dashboard view as CSV
 

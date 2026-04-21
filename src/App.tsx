@@ -24,6 +24,7 @@ import { ACTIVE_COUNTY } from './config/countyConfig';
 import { BUILT_IN_DATA_METADATA } from './data/unionCountyBuiltInData';
 import { computeOpportunityScores, getTopQuartileOpportunityScores } from './lib/opportunityScoring';
 import { CVAPRecord, HistoryRecord, PrecinctStats, VoterRecord } from './types';
+import { LicenseAcceptanceModal } from './components/LicenseAcceptanceModal';
 
 const ChoroplethMap = lazy(async () => {
   const module = await import('./components/ChoroplethMap');
@@ -49,6 +50,7 @@ const MAX_UPLOAD_FILE_BYTES = 20 * 1024 * 1024;
 const FILE_UPLOAD_PATTERN = /\.(txt|csv)$/i;
 const ASSET_FETCH_TIMEOUT_MS = 15000;
 const STORAGE_KEYS = {
+  licenseAccepted: 'uci:licenseAccepted',
   selectedYear: 'uci:selectedYear',
   selectedPrecinct: 'uci:selectedPrecinct',
   scenarioTurnoutLiftPct: 'uci:scenarioTurnoutLiftPct',
@@ -412,6 +414,9 @@ export default function App() {
     return 'ALL';
   });
   const [selectedOpportunityTargets, setSelectedOpportunityTargets] = useState<string[]>([]);
+  const [licenseAccepted, setLicenseAccepted] = useState<boolean>(() => {
+    return getStoredString(STORAGE_KEYS.licenseAccepted, '') === 'true';
+  });
 
   // --- Data Processing ---
 
@@ -1564,6 +1569,16 @@ export default function App() {
   };
 
   return (
+    <>
+      {!licenseAccepted && (
+        <LicenseAcceptanceModal
+          onAccept={() => {
+            window.localStorage.setItem(STORAGE_KEYS.licenseAccepted, 'true');
+            setLicenseAccepted(true);
+          }}
+        />
+      )}
+      {licenseAccepted && (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -2598,5 +2613,7 @@ export default function App() {
         </div>
       </footer>
     </div>
+      )}
+    </>
   );
 }

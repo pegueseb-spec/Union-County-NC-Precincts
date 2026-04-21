@@ -1,0 +1,1065 @@
+﻿TestingLibraryElementError: Unable to find an accessible element with the role "button" and name `/loading data|reload built-in dataset/i`
+
+Here are the accessible roles:
+
+  banner:
+
+  Name "":
+  [36m<header[39m
+    [33mclass[39m=[32m"bg-white border-b border-gray-200 sticky top-0 z-10"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  heading:
+
+  Name "Union County Voter Intelligence":
+  [36m<h1[39m
+    [33mclass[39m=[32m"text-xl font-bold tracking-tight"[39m
+  [36m/>[39m
+
+  Name "10":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "8":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "80.00%":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "1":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "N/A":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "Trend Signals (2024 vs 2023)":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-lg font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "Data Quality and Provenance":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-lg font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "Scenario Planner":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-lg font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "Opportunity Targets (Top Quartile)":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-lg font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "Turnout Choropleth Map":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-lg font-bold text-gray-900 flex items-center gap-2"[39m
+  [36m/>[39m
+
+  Name "Precinct Insights":
+  [36m<h3[39m
+    [33mclass[39m=[32m"text-lg font-bold text-gray-900 flex items-center gap-2"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs text-gray-500 font-medium uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-[11px] text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm text-gray-400 mt-1"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs font-bold uppercase tracking-wider text-emerald-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs font-bold uppercase tracking-wider text-rose-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs font-bold uppercase tracking-wider text-blue-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs font-bold uppercase tracking-wider text-blue-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 text-xl font-bold text-blue-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs font-bold uppercase tracking-wider text-purple-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 text-xl font-bold text-purple-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs font-bold uppercase tracking-wider text-orange-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 text-xl font-bold text-orange-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs font-bold uppercase tracking-wider text-slate-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 text-xl font-bold text-slate-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 font-semibold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs text-gray-500 mt-1"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 font-semibold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs text-gray-500 mt-1"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 font-semibold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs text-gray-500 mt-1"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-emerald-800"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-2 text-sm text-emerald-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 text-2xl font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-blue-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 text-2xl font-bold text-blue-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-emerald-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 text-2xl font-bold text-emerald-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-blue-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-[11px] uppercase tracking-wider font-semibold text-blue-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 font-bold text-blue-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-[11px] uppercase tracking-wider font-semibold text-blue-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 font-bold text-blue-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-[11px] uppercase tracking-wider font-semibold text-blue-700"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"mt-1 font-bold text-blue-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs uppercase tracking-wider font-bold text-gray-600 mb-3"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-xs text-gray-400 font-medium italic"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-gray-500 font-medium"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"font-bold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm text-gray-500"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<p[39m
+    [33mclass[39m=[32m"text-sm text-gray-400"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  button:
+
+  Name "Data Upload":
+  [36m<button[39m
+    [33mclass[39m=[32m"flex items-center gap-2 px-6 py-3 font-medium transition-all relative text-gray-500 hover:text-gray-700"[39m
+  [36m/>[39m
+
+  Name "Dashboard":
+  [36m<button[39m
+    [33mclass[39m=[32m"flex items-center gap-2 px-6 py-3 font-medium transition-all relative text-blue-600"[39m
+  [36m/>[39m
+
+  Name "How-To":
+  [36m<button[39m
+    [33mclass[39m=[32m"flex items-center gap-2 px-6 py-3 font-medium transition-all relative text-gray-500 hover:text-gray-700"[39m
+  [36m/>[39m
+
+  Name "Export Summary CSV":
+  [36m<button[39m
+    [33mclass[39m=[32m"flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm bg-green-600 text-white hover:bg-green-700"[39m
+  [36m/>[39m
+
+  Name "Copy Assumptions":
+  [36m<button[39m
+    [33mclass[39m=[32m"px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"[39m
+  [36m/>[39m
+
+  Name "Export Planning Bundle CSV":
+  [36m<button[39m
+    [33mclass[39m=[32m"px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-slate-700 text-white hover:bg-slate-800"[39m
+  [36m/>[39m
+
+  Name "Export Scenario CSV":
+  [36m<button[39m
+    [33mclass[39m=[32m"px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-emerald-600 text-white hover:bg-emerald-700"[39m
+  [36m/>[39m
+
+  Name "Export Targets CSV":
+  [36m<button[39m
+    [33mclass[39m=[32m"px-3 py-1.5 rounded-md text-xs font-semibold transition-colors bg-amber-500 text-white hover:bg-amber-600"[39m
+  [36m/>[39m
+
+  Name "Export Selected CSV":
+  [36m<button[39m
+    [33mclass[39m=[32m"px-3 py-1.5 rounded-md text-xs font-semibold transition-colors bg-slate-100 text-slate-300 cursor-not-allowed"[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Copy Selected Precincts":
+  [36m<button[39m
+    [33mclass[39m=[32m"px-3 py-1.5 rounded-md text-xs font-semibold transition-colors bg-slate-100 text-slate-300 cursor-not-allowed"[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Select all visible":
+  [36m<button[39m
+    [33mclass[39m=[32m"font-semibold text-blue-700 hover:text-blue-800 disabled:text-gray-400"[39m
+  [36m/>[39m
+
+  Name "Clear":
+  [36m<button[39m
+    [33mclass[39m=[32m"font-semibold text-gray-700 hover:text-gray-900 disabled:text-gray-400"[39m
+    [33mdisabled[39m=[32m""[39m
+  [36m/>[39m
+
+  Name "Focus Precinct":
+  [36m<button[39m
+    [33mclass[39m=[32m"px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  main:
+
+  Name "":
+  [36m<main[39m
+    [33mclass[39m=[32m"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  combobox:
+
+  Name "Election Year":
+  [36m<select[39m
+    [33maria-label[39m=[32m"Election Year"[39m
+    [33mclass[39m=[32m"bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"[39m
+    [33mid[39m=[32m"election-year"[39m
+  [36m/>[39m
+
+  Name "Precinct":
+  [36m<select[39m
+    [33maria-label[39m=[32m"Precinct"[39m
+    [33mclass[39m=[32m"bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"[39m
+    [33mid[39m=[32m"precinct-filter"[39m
+  [36m/>[39m
+
+  Name "Opportunity Action Filter":
+  [36m<select[39m
+    [33maria-label[39m=[32m"Opportunity Action Filter"[39m
+    [33mclass[39m=[32m"bg-gray-50 border border-gray-200 rounded-md px-2 py-1 text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-amber-500 outline-none"[39m
+    [33mid[39m=[32m"opportunity-action-filter"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  option:
+
+  Name "2020":
+  [36m<option[39m
+    [33mvalue[39m=[32m"2020"[39m
+  [36m/>[39m
+
+  Name "2021":
+  [36m<option[39m
+    [33mvalue[39m=[32m"2021"[39m
+  [36m/>[39m
+
+  Name "2022":
+  [36m<option[39m
+    [33mvalue[39m=[32m"2022"[39m
+  [36m/>[39m
+
+  Name "2023":
+  [36m<option[39m
+    [33mvalue[39m=[32m"2023"[39m
+  [36m/>[39m
+
+  Name "2024":
+  [36m<option[39m
+    [33mvalue[39m=[32m"2024"[39m
+  [36m/>[39m
+
+  Name "2025":
+  [36m<option[39m
+    [33mvalue[39m=[32m"2025"[39m
+  [36m/>[39m
+
+  Name "All Union County Precincts":
+  [36m<option[39m
+    [33mvalue[39m=[32m"ALL"[39m
+  [36m/>[39m
+
+  Name "01":
+  [36m<option[39m
+    [33mvalue[39m=[32m"01"[39m
+  [36m/>[39m
+
+  Name "All actions":
+  [36m<option[39m
+    [33mvalue[39m=[32m"ALL"[39m
+  [36m/>[39m
+
+  Name "Registration Growth":
+  [36m<option[39m
+    [33mvalue[39m=[32m"Registration Growth"[39m
+  [36m/>[39m
+
+  Name "Persuasion":
+  [36m<option[39m
+    [33mvalue[39m=[32m"Persuasion"[39m
+  [36m/>[39m
+
+  Name "GOTV Chase":
+  [36m<option[39m
+    [33mvalue[39m=[32m"GOTV Chase"[39m
+  [36m/>[39m
+
+  Name "Election Day Logistics":
+  [36m<option[39m
+    [33mvalue[39m=[32m"Election Day Logistics"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  slider:
+
+  Name "Modeled turnout lift across selected year and precinct filter":
+  [36m<input[39m
+    [33mclass[39m=[32m"w-full"[39m
+    [33mid[39m=[32m"scenario-lift"[39m
+    [33mmax[39m=[32m"20"[39m
+    [33mmin[39m=[32m"0"[39m
+    [33mstep[39m=[32m"0.5"[39m
+    [33mtype[39m=[32m"range"[39m
+    [33mvalue[39m=[32m"5"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  table:
+
+  Name "":
+  [36m<table[39m
+    [33mclass[39m=[32m"w-full text-left border-collapse"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<table[39m
+    [33mclass[39m=[32m"w-full text-left border-collapse"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  rowgroup:
+
+  Name "":
+  [36m<thead />[39m
+
+  Name "":
+  [36m<tbody[39m
+    [33mclass[39m=[32m"divide-y divide-gray-100"[39m
+  [36m/>[39m
+
+  Name "":
+  [36m<thead />[39m
+
+  Name "":
+  [36m<tbody[39m
+    [33mclass[39m=[32m"divide-y divide-gray-100"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  row:
+
+  Name "Select Rank Precinct Score Recommended Action Turnout Gap Reg. Mass CVAP Gap Recent Decline Action":
+  [36m<tr[39m
+    [33mclass[39m=[32m"bg-gray-50 border-b border-gray-200"[39m
+  [36m/>[39m
+
+  Name "Select target 01 1 01 0.0 GOTV Chase 0 0 0 0 Focus Precinct":
+  [36m<tr[39m
+    [33mclass[39m=[32m"hover:bg-gray-50"[39m
+  [36m/>[39m
+
+  Name "Precinct CVAP Reg. Total Reg. / CVAP Ballots Cast Turnout % Turnout ╬ö YoY Trend Reg. REP Reg. DEM Reg. UNA Reg. White Reg. Black Turnout Black %":
+  [36m<tr[39m
+    [33mclass[39m=[32m"bg-gray-50 border-b border-gray-200"[39m
+  [36m/>[39m
+
+  Name "01 N/A 10 N/A 8 80.00% +30.00 pts Improving 10 0 0 10 0 0.00%":
+  [36m<tr[39m
+    [33mclass[39m=[32m"hover:bg-gray-50 transition-colors"[39m
+  [36m/>[39m
+
+  Name "ALL UNION COUNTY 0 10 N/A 8 80.00% +30.00 pts County Aggregate 10 0 0 10 0 0.00%":
+  [36m<tr[39m
+    [33mclass[39m=[32m"bg-blue-50/50 font-bold border-t-2 border-blue-100"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  columnheader:
+
+  Name "Select":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Rank":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Precinct":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Score":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Recommended Action":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Turnout Gap":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. Mass":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "CVAP Gap":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Recent Decline":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Action":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Precinct":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10"[39m
+  [36m/>[39m
+
+  Name "CVAP":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. Total":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. / CVAP":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Ballots Cast":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Turnout %":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Turnout ╬ö YoY":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Trend":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. REP":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. DEM":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. UNA":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. White":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Reg. Black":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  Name "Turnout Black %":
+  [36m<th[39m
+    [33mclass[39m=[32m"px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  cell:
+
+  Name "Select target 01":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3"[39m
+  [36m/>[39m
+
+  Name "1":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm font-bold text-gray-800"[39m
+  [36m/>[39m
+
+  Name "01":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm font-semibold text-gray-900"[39m
+  [36m/>[39m
+
+  Name "0.0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm text-gray-800"[39m
+  [36m/>[39m
+
+  Name "GOTV Chase":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm text-gray-700"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm text-gray-700"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm text-gray-700"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm text-gray-700"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3 text-sm text-gray-700"[39m
+  [36m/>[39m
+
+  Name "Focus Precinct":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-4 py-3"[39m
+  [36m/>[39m
+
+  Name "01":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 font-bold text-gray-900 sticky left-0 bg-white group-hover:bg-gray-50"[39m
+  [36m/>[39m
+
+  Name "N/A":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "10":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "N/A":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "8":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "80.00%":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4"[39m
+  [36m/>[39m
+
+  Name "+30.00 pts":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "Improving":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4"[39m
+  [36m/>[39m
+
+  Name "10":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "10":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "0.00%":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-gray-600"[39m
+  [36m/>[39m
+
+  Name "ALL UNION COUNTY":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-blue-900 sticky left-0 bg-blue-50/50"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "10":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "N/A":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "8":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "80.00%":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4"[39m
+  [36m/>[39m
+
+  Name "+30.00 pts":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "County Aggregate":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "10":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "10":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "0":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  Name "0.00%":
+  [36m<td[39m
+    [33mclass[39m=[32m"px-6 py-4 text-sm text-blue-900"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  checkbox:
+
+  Name "Select target 01":
+  [36m<input[39m
+    [33maria-label[39m=[32m"Select target 01"[39m
+    [33mtype[39m=[32m"checkbox"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+  contentinfo:
+
+  Name "":
+  [36m<footer[39m
+    [33mclass[39m=[32m"bg-white border-t border-gray-200 py-8 mt-12"[39m
+  [36m/>[39m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-gray-50 font-sans text-gray-900"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-white border-b border-gray-200 sticky top-0 z-10"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex justify-between items-center h-16"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-3"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-blue-600 p-2 rounded-lg"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"lucide lucide-users text-white"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M16 3.128a4 4 0 0 1 0 7.744"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M22 21v-2a4 4 0 0 0-3-3.87"[39m
+                  [36m/>[39m
+                  [36m<circle[39m
+                    [33mcx[39m=[32m"9"[39m
+                    [33mcy[39m=[32m"7"[39m
+                    [33mr[39m=[32m"4"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<h1[39m
+                  [33mclass[39m=[32m"text-xl font-bold tracking-tight"[39m
+                [36m>[39m
+                  [0mUnion County[0m
+                  [0m Voter Intelligence[0m
+                [36m</h1>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"text-xs text-gray-500 font-medium uppercase tracking-wider"[39m
+                [36m>[39m
+                  [0mField Organizer Dashboard[0m
+                [36m</p>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"text-[11px] text-gray-500"[39m
+                [36m>[39m
+                  [0mDeveloped by JBPTV Consultancy Group. Blueprint for expansion across all 100 NC counties.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex bg-gray-100 p-1 rounded-lg"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 px-6 py-3 font-medium transition-all relative text-gray-500 hover:text-gray-700"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-file-up"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M14 2v4a2 2 0 0 0 2 2h4"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M12 12v6"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"m15 15-3-3-3 3"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [0mData Upload[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 px-6 py-3 font-medium transition-all relative text-blue-600"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide lucide-chart-column"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"18"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"18"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 3v16a2 2 0 0 0 2 2h16"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M18 17V9"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M13 17V5"[39m
+                    [36m/>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M8 17v-3"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [0mDashboard[0m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"[39m
+                    [33mstyle[39m=[32m"opacity: 1;"[39m
+                  [36m/>[39m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 px-6 py-3 font-medium transition-all relative text-gray-500 hover:text-gray-700"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [3...
+    at Object.getElementError (C:\Users\pegue\Union-County-NC-Precincts\node_modules\@testing-library\dom\dist\config.js:37:19)
+    at C:\Users\pegue\Union-County-NC-Precincts\node_modules\@testing-library\dom\dist\query-helpers.js:76:38
+    at C:\Users\pegue\Union-County-NC-Precincts\node_modules\@testing-library\dom\dist\query-helpers.js:52:17
+    at C:\Users\pegue\Union-County-NC-Precincts\node_modules\@testing-library\dom\dist\query-helpers.js:95:19
+    at C:/Users/pegue/Union-County-NC-Precincts/src/App.test.tsx:91:19
+    at file:///C:/Users/pegue/Union-County-NC-Precincts/node_modules/@vitest/runner/dist/chunk-artifact.js:1893:20

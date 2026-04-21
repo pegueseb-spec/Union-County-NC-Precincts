@@ -30,6 +30,31 @@ const MOCK_HISTORY_ROW_PREV = {
   stats_type: 'history', age: 'Age 26 - 40', update_date: '2023-11-25',
 };
 
+/**
+ * Helper to accept the license agreement modal required to access the app.
+ * Finds the acceptance checkbox, clicks it, and clicks the "Accept & Continue" button.
+ */
+const acceptLicense = async () => {
+  const user = userEvent.setup();
+  
+  // Find and click the license acceptance checkbox
+  const licenseCheckbox = screen.getByRole('checkbox', {
+    name: /i acknowledge and accept.*license terms/i,
+  });
+  await user.click(licenseCheckbox);
+  
+  // Click the "Accept & Continue" button
+  const acceptButton = screen.getByRole('button', {
+    name: /accept & continue/i,
+  });
+  await user.click(acceptButton);
+  
+  // Wait for modal to disappear
+  await waitFor(() => {
+    expect(screen.queryByRole('heading', { name: /license agreement/i })).not.toBeInTheDocument();
+  });
+};
+
 describe('App', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn((url: string) => {
@@ -47,18 +72,32 @@ describe('App', () => {
     cleanup();
   });
 
-  it('renders the upload screen by default', () => {
+  it('renders the license agreement modal before showing the app', () => {
     render(<App />);
 
-    expect(screen.getByRole('button', { name: /loading data|reload built-in dataset/i })).toBeInTheDocument();
-    expect(screen.getByText(/voter registration/i)).toBeInTheDocument();
-    expect(screen.getByText(/voter history/i)).toBeInTheDocument();
-    expect(screen.getByText(/census cvap/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /license agreement/i })).toBeInTheDocument();
+    expect(screen.getByText(/proprietary software/i)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', {
+      name: /i acknowledge and accept.*license terms/i,
+    })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /accept & continue/i })).toBeDisabled();
+  });
+
+  it('renders the upload screen after accepting license', async () => {
+    render(<App />);
+
+    await acceptLicense();
+
+    // License modal should be gone
+    expect(screen.queryByRole('heading', { name: /license agreement/i })).not.toBeInTheDocument();
+    // App should be visible
+    expect(screen.getByRole('heading', { name: /union county voter intelligence/i })).toBeInTheDocument();
   });
 
   it('auto-loads built-in data and opens the dashboard', async () => {
     render(<App />);
 
+    await acceptLicense();
     await screen.findByText(/turnout choropleth map/i);
     expect(screen.getByLabelText(/election year/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^precinct$/i)).toBeInTheDocument();
@@ -84,6 +123,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await acceptLicense();
     await user.click(screen.getByRole('button', { name: /how-to/i }));
 
     await waitFor(() => {
@@ -94,12 +134,14 @@ describe('App', () => {
   it('shows trend signals with year-over-year turnout deltas', async () => {
     render(<App />);
 
+    await acceptLicense();
     await screen.findByText(/trend signals \(2024 vs 2023\)/i);
     expect(screen.getByText(/county turnout Δ:/i)).toBeInTheDocument();
     expect(screen.getAllByText(/\+30.00 pts/i).length).toBeGreaterThan(0);
   });
 
   it('restores persisted dashboard controls from localStorage', async () => {
+    window.localStorage.setItem('uci:licenseAccepted', 'true');
     window.localStorage.setItem('uci:selectedYear', '2023');
     window.localStorage.setItem('uci:selectedPrecinct', '01');
     window.localStorage.setItem('uci:scenarioTurnoutLiftPct', '12');
@@ -124,6 +166,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await acceptLicense();
     await screen.findByText(/turnout choropleth map/i);
     await user.click(screen.getByRole('button', { name: /data upload/i }));
 
@@ -138,6 +181,7 @@ describe('App', () => {
   it('shows focused field packet export when a precinct is selected', async () => {
     render(<App />);
 
+    await acceptLicense();
     await screen.findByText(/turnout choropleth map/i);
     const precinctSelect = screen.getByLabelText(/^precinct$/i);
     fireEvent.change(precinctSelect, { target: { value: '01' } });

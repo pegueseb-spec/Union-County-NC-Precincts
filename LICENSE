@@ -1,0 +1,83 @@
+PROPRIETARY LICENSE AGREEMENT
+
+Union County Voter Intelligence Dashboard
+Copyright © 2026 JBPTV Consultancy Group. All Rights Reserved.
+
+TERMS AND CONDITIONS
+
+1. OWNERSHIP
+   This software, including all source code, documentation, and methodology, is the sole and exclusive property of JBPTV Consultancy Group. 
+
+2. AUTHORIZED USE
+   This software is provided solely for authorized use by field organizers and campaign staff designated by JBPTV Consultancy Group or its clients. Unauthorized use is prohibited.
+
+3. RESTRICTIONS
+   You may NOT:
+   
+   a) Reverse engineer, decompile, or attempt to discover the underlying concept,
+      architecture, scoring algorithms, or systemic methodology employed by this
+      application.
+      
+   b) Duplicate, replicate, or create derivative works based on the design pattern,
+      data flow, component structure, or business logic of this system without
+      express written permission from JBPTV Consultancy Group.
+      
+   c) Adapt this system or methodology for use with other counties, states, or
+      jurisdictions without explicit authorization.
+      
+   d) Share, distribute, sublicense, or transfer access to this application to
+      any third party without written consent.
+      
+   e) Modify, fork, or create competing versions of this software.
+      
+   f) Extract, scrape, or export bulk data for purposes outside the intended
+      field organizer workflow.
+      
+   g) Use machine learning, statistical analysis, or automated means to understand
+      the proprietary scoring and targeting algorithms.
+
+4. PENALTIES FOR VIOLATION
+   Unauthorized duplication, adaptation, or reverse engineering of this system
+   will result in:
+   
+   - Immediate termination of access
+   - Civil and criminal legal action
+   - Liability for damages and JBPTV Consultancy Group legal fees
+   - Injunctive relief to prevent further unauthorized use
+
+5. PERMITTED EXPANSION
+   JBPTV Consultancy Group may authorize expansion to additional North Carolina
+   counties under a separate expansion agreement. See MULTI_COUNTY_EXPANSION_GUIDE.md
+   for technical requirements.
+
+6. DISCLAIMER
+   This software is provided "as is" without warranty of any kind. JBPTV
+   Consultancy Group is not liable for:
+   
+   - Incorrect election predictions or campaign outcomes
+   - Data inaccuracies from source files
+   - Service interruptions or data loss
+   - Unauthorized access due to user negligence
+
+7. TERMINATION
+   This license is effective upon acceptance and continues until terminated.
+   JBPTV Consultancy Group may revoke access at any time for violation of these
+   terms or for any reason.
+
+8. GOVERNING LAW
+   This agreement is governed by the laws of North Carolina and the jurisdiction
+   where JBPTV Consultancy Group is located.
+
+9. ENTIRE AGREEMENT
+   This license constitutes the entire agreement between you and JBPTV Consultancy
+   Group regarding this software.
+
+---
+
+ACCEPTANCE OF TERMS
+
+By accessing this application, you agree to be bound by all terms and conditions
+stated above. If you do not agree, do not use this software.
+
+Contact: JBPTV Consultancy Group
+For licensing inquiries or expansion requests, contact the organization directly.

@@ -2813,6 +2813,10 @@ export default function App() {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-8 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1 mb-3">
+            Pre-Release Beta: Local-first planning tool (no backend database yet)
+          </p>
+          <p className="text-xs text-gray-500 mb-1">Outputs are decision-support signals and should be validated by field leadership context.</p>
           <p className="text-sm text-gray-400">© 2026 {ACTIVE_COUNTY.displayName} Field Intelligence. For authorized organizer use only.</p>
         </div>
       </footer>

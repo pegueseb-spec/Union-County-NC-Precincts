@@ -8,6 +8,26 @@ This project is a Vite + React dashboard for analyzing Union County, NC voter re
 
 Developed by JBPTV Consultancy Group. This implementation is designed as a reusable template for expansion across all 100 North Carolina counties.
 
+## Beta Release Status
+
+This application is currently in **Pre-Release / Beta**.
+
+Recommended beta use:
+- Pilot deployments with organizers and field leads
+- Workflow validation and iteration before backend/database rollout
+- Precinct-level planning support and export handoffs
+
+Known beta limitations:
+- No backend database yet (browser-local state and file-driven analysis)
+- No multi-user collaboration, role-based access, or centralized sync
+- No server-side authentication or API orchestration in this version
+- Results are planning support signals and should be reviewed with organizer judgment
+
+Planned post-beta direction:
+- Backend services and persistent storage
+- Multi-user accounts, permissions, and audit trails
+- County-scaled data management pipelines
+
 ## What It Does
 
 - Loads built-in Union County precinct election data directly in app memory

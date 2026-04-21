@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { ACTIVE_COUNTY } from './config/countyConfig';
 import { BUILT_IN_DATA_METADATA } from './data/unionCountyBuiltInData';
 import { computeOpportunityScores, getTopQuartileOpportunityScores } from './lib/opportunityScoring';
 import { CVAPRecord, HistoryRecord, PrecinctStats, VoterRecord } from './types';
@@ -35,8 +36,7 @@ const HowToPanel = lazy(async () => {
 });
 
 // --- Constants ---
-const UNION_COUNTY = "UNION";
-const YEARS = [2020, 2021, 2022, 2023, 2024, 2025];
+const YEARS = [...ACTIVE_COUNTY.availableYears];
 const RACE_CODES = ['W', 'B', 'A', 'I', 'M', 'O', 'P', 'U'];
 const PARTY_CODES = ['REP', 'DEM', 'UNA', 'LIB', 'GRE', 'CST', 'NLB'];
 const GENDER_CODES = ['M', 'F', 'U'];
@@ -232,7 +232,7 @@ const isUnionCountyRow = (row: Record<string, unknown>) => {
     return true;
   }
 
-  return String(county).toUpperCase().includes(UNION_COUNTY);
+  return String(county).toUpperCase().includes(ACTIVE_COUNTY.countyCode);
 };
 
 const normalizeCvapRecord = (row: Record<string, unknown>): CVAPRecord | null => {
@@ -265,7 +265,7 @@ const normalizeVoterRecord = (row: Record<string, unknown>): VoterRecord | null 
   if (!precinct || !party || !race || !sex) return null;
 
   return {
-    county_desc: String(getRowValue(row, COUNTY_KEYS) || UNION_COUNTY),
+    county_desc: String(getRowValue(row, COUNTY_KEYS) || ACTIVE_COUNTY.countyCode),
     precinct_abbrv: precinct,
     age: getRowValue(row, ['age']) ? String(getRowValue(row, ['age'])) : undefined,
     party_cd: party,
@@ -290,7 +290,7 @@ const normalizeHistoryRecord = (row: Record<string, unknown>): HistoryRecord | n
   if (!precinct || !party || !race || !sex || !electionDate) return null;
 
   return {
-    county_desc: String(getRowValue(row, COUNTY_KEYS) || UNION_COUNTY),
+    county_desc: String(getRowValue(row, COUNTY_KEYS) || ACTIVE_COUNTY.countyCode),
     precinct_abbrv: precinct,
     voting_method: getRowValue(row, ['voting_method']) ? String(getRowValue(row, ['voting_method'])) : undefined,
     race_code: race,
@@ -302,7 +302,7 @@ const normalizeHistoryRecord = (row: Record<string, unknown>): HistoryRecord | n
 };
 
 const getVoterDropReason = (row: Record<string, unknown>) => {
-  if (!isUnionCountyRow(row)) return 'Outside Union County filter';
+  if (!isUnionCountyRow(row)) return `Outside ${ACTIVE_COUNTY.displayName} filter`;
 
   const precinct = normalizePrecinct(getRowValue(row, ['precinct_abbrv', 'precinct']));
   const party = normalizeCode(getRowValue(row, ['party_cd', 'party']));
@@ -318,7 +318,7 @@ const getVoterDropReason = (row: Record<string, unknown>) => {
 };
 
 const getHistoryDropReason = (row: Record<string, unknown>) => {
-  if (!isUnionCountyRow(row)) return 'Outside Union County filter';
+  if (!isUnionCountyRow(row)) return `Outside ${ACTIVE_COUNTY.displayName} filter`;
 
   const precinct = normalizePrecinct(getRowValue(row, ['precinct_abbrv', 'precinct']));
   const party = normalizeCode(getRowValue(row, ['party_cd', 'party']));
@@ -471,7 +471,7 @@ export default function App() {
               const countyMatches = isUnionCountyRow(row);
 
               let reason = 'Row could not be normalized';
-              if (!countyMatches) reason = 'Outside Union County filter';
+              if (!countyMatches) reason = `Outside ${ACTIVE_COUNTY.displayName} filter`;
               else if (!precinctValue && cvapValue === null) reason = 'Missing precinct and CVAP total values';
               else if (!precinctValue) reason = 'Missing precinct value';
               else if (cvapValue === null) reason = 'Missing or invalid CVAP total value';
@@ -932,8 +932,8 @@ export default function App() {
 
     try {
       const [voterJson, historyJson] = await Promise.all([
-        fetchJsonAsset<Record<string, unknown>[]>('data/union_voter_stats.json'),
-        fetchJsonAsset<Record<string, unknown>[]>('data/union_history_stats.json'),
+        fetchJsonAsset<Record<string, unknown>[]>(ACTIVE_COUNTY.voterStatsUrl),
+        fetchJsonAsset<Record<string, unknown>[]>(ACTIVE_COUNTY.historyStatsUrl),
       ]);
 
       if (!Array.isArray(voterJson) || !Array.isArray(historyJson)) {
@@ -1229,7 +1229,7 @@ export default function App() {
       ...Object.fromEntries(RACE_CODES.map(r => [`Density ${r} %`, (s.densityByRace[r] || 0).toFixed(2)])),
     }));
 
-    exportCsvFile(rows, `Union_County_Analysis_${selectedYear}.csv`);
+    exportCsvFile(rows, `${ACTIVE_COUNTY.exportFilePrefix}_Analysis_${selectedYear}.csv`);
   };
 
   const copyScenarioAssumptions = async () => {
@@ -1574,7 +1574,7 @@ export default function App() {
                 <Users className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight">Union County Voter Intelligence</h1>
+                <h1 className="text-xl font-bold tracking-tight">{ACTIVE_COUNTY.displayName} Voter Intelligence</h1>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Field Organizer Dashboard</p>
                 <p className="text-[11px] text-gray-500">Developed by JBPTV Consultancy Group. Blueprint for expansion across all 100 NC counties.</p>
               </div>
@@ -1828,7 +1828,7 @@ export default function App() {
                     onChange={(e) => setSelectedPrecinct(e.target.value)}
                     className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
                   >
-                    <option value="ALL">All Union County Precincts</option>
+                    <option value="ALL">All {ACTIVE_COUNTY.displayName} Precincts</option>
                     {Array.from(new Set(processedStats.map(s => s.precinct))).sort().map(p => (
                       <option key={p} value={p}>{p}</option>
                     ))}
@@ -2283,6 +2283,7 @@ export default function App() {
                       stats={currentYearStats}
                       selectedPrecinct={selectedPrecinct}
                       onPrecinctSelect={setSelectedPrecinct}
+                      geoJsonUrl={ACTIVE_COUNTY.geoJsonUrl}
                     />
                   </Suspense>
                 </div>
@@ -2593,7 +2594,7 @@ export default function App() {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-8 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm text-gray-400">© 2026 Union County Field Intelligence. For authorized organizer use only.</p>
+          <p className="text-sm text-gray-400">© 2026 {ACTIVE_COUNTY.displayName} Field Intelligence. For authorized organizer use only.</p>
         </div>
       </footer>
     </div>

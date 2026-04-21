@@ -33,6 +33,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [opportunityWeights, setOpportunityWeights] = useState<OpportunityWeights>(DEFAULT_OPPORTUNITY_WEIGHTS);
   const mapFetchTimeoutMs = 15000;
+  const mapHeight = 500;
 
   const normalizePrecinct = (value: unknown) => String(value ?? '').trim().toUpperCase().replace(/^0+/, '');
   const getFeaturePrecinct = (feature: any) => String(feature?.properties?.prec_id || feature?.properties?.PREC_NAME || feature?.properties?.PRECINCT || '');
@@ -42,6 +43,18 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     () => Array.from(new Set(stats.map((s) => s.precinct))).filter(Boolean).sort(),
     [stats]
   );
+
+  const featureByPrecinctKey = useMemo(() => {
+    if (!geoData?.features) return new Map<string, any>();
+    return new Map<string, any>(
+      geoData.features.map((feature: any) => [normalizePrecinct(getFeaturePrecinct(feature)), feature])
+    );
+  }, [geoData]);
+
+  const selectedFeature = useMemo(() => {
+    if (selectedPrecinct === 'ALL') return null;
+    return featureByPrecinctKey.get(selectedKey) ?? null;
+  }, [featureByPrecinctKey, selectedKey, selectedPrecinct]);
 
   const statsByPrecinct = useMemo(() => {
     const map = new Map<string, PrecinctStats>();
@@ -79,6 +92,18 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     const max = topScores.length > 0 ? Math.max(...topScores) : 1;
     return d3.scaleSequential(d3.interpolateOranges).domain([min, Math.max(max, min + 0.0001)]);
   }, [opportunityPrecincts, opportunityScoresByPrecinct]);
+
+  const mappedPrecinctCount = featureByPrecinctKey.size;
+  const withStatsCount = useMemo(() => {
+    if (mappedPrecinctCount === 0) return 0;
+    let count = 0;
+    featureByPrecinctKey.forEach((_feature, key) => {
+      if (statsByPrecinct.has(key)) count += 1;
+    });
+    return count;
+  }, [featureByPrecinctKey, mappedPrecinctCount, statsByPrecinct]);
+
+  const topOpportunityCount = opportunityPrecincts.size;
 
   const resetZoom = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -139,7 +164,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     };
 
     fetchGeoData();
-  }, []);
+  }, [geoJsonUrl]);
 
   useEffect(() => {
     if (!geoData || !svgRef.current) return;
@@ -148,7 +173,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     svg.selectAll('*').remove();
 
     const width = svgRef.current.clientWidth;
-    const height = 500;
+    const height = mapHeight;
     
     const projection = d3.geoMercator()
       .fitSize([width, height], geoData);
@@ -158,6 +183,23 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     // Color scale for turnout
     const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
       .domain([0, 100]);
+
+    const defs = svg.append('defs');
+    defs
+      .append('pattern')
+      .attr('id', 'no-data-pattern')
+      .attr('width', 6)
+      .attr('height', 6)
+      .attr('patternUnits', 'userSpaceOnUse')
+      .append('path')
+      .attr('d', 'M -1,1 l2,-2 M 0,6 l6,-6 M 5,7 l2,-2')
+      .attr('stroke', '#d1d5db')
+      .attr('stroke-width', 1);
+
+    defs
+      .append('filter')
+      .attr('id', 'selected-precinct-glow')
+      .html('<feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#1d4ed8" flood-opacity="0.55" />');
 
     const g = svg.append('g').attr('class', 'map-layer');
 
@@ -173,12 +215,13 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       .attr('class', 'precinct-path cursor-pointer transition-all duration-200')
       .attr('stroke', '#fff')
       .attr('stroke-width', (d: any) => {
-        return isFeatureSelected(d) ? 3 : 0.5;
+        return isFeatureSelected(d) ? 2.5 : 0.7;
       })
+      .attr('filter', (d: any) => isFeatureSelected(d) ? 'url(#selected-precinct-glow)' : null)
       .attr('fill', (d: any) => {
         const precinctKey = normalizePrecinct(getFeaturePrecinct(d));
         const precinctStats = getPrecinctStats(d);
-        if (!precinctStats) return '#f3f4f6';
+        if (!precinctStats) return 'url(#no-data-pattern)';
         if (showOpportunities && opportunityPrecincts.has(precinctKey)) {
           const score = opportunityScoresByPrecinct.get(precinctKey);
           return opportunityColorScale(score?.score ?? 0);
@@ -197,7 +240,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         
         d3.select(event.currentTarget)
           .attr('stroke', '#3b82f6')
-          .attr('stroke-width', 2)
+          .attr('stroke-width', isFeatureSelected(d) ? 2.5 : 1.7)
           .raise();
           
         setHoveredInfo({ name: precinctName, stats: precinctStats, opportunity });
@@ -209,7 +252,8 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       .on('mouseout', (event, d: any) => {
         d3.select(event.currentTarget)
           .attr('stroke', isFeatureSelected(d) ? '#3b82f6' : '#fff')
-          .attr('stroke-width', isFeatureSelected(d) ? 3 : 0.5);
+          .attr('stroke-width', isFeatureSelected(d) ? 2.5 : 0.7)
+          .attr('filter', isFeatureSelected(d) ? 'url(#selected-precinct-glow)' : null);
         setHoveredInfo(null);
       })
       .on('click', (event, d: any) => {
@@ -217,7 +261,13 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
 
         const precinctName = getFeaturePrecinct(d);
         const match = getPrecinctStats(d);
-        onPrecinctSelect(match?.precinct || precinctName);
+        const nextPrecinct = match?.precinct || precinctName;
+        if (normalizePrecinct(nextPrecinct) === selectedKey) {
+          onPrecinctSelect('ALL');
+          resetZoom();
+          return;
+        }
+        onPrecinctSelect(nextPrecinct);
 
         if (!svgRef.current || !zoomBehaviorRef.current) return;
 
@@ -246,7 +296,51 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
     zoomBehaviorRef.current = zoom;
     svg.call(zoom as any);
 
-  }, [geoData, opportunityColorScale, opportunityPrecincts, opportunityScoresByPrecinct, selectedKey, showOpportunities, statsByPrecinct]);
+  }, [geoData, mapHeight, opportunityColorScale, opportunityPrecincts, opportunityScoresByPrecinct, selectedKey, showOpportunities, statsByPrecinct]);
+
+  useEffect(() => {
+    if (!svgRef.current || !zoomBehaviorRef.current || !geoData) return;
+
+    const svg = d3.select(svgRef.current);
+    const width = svgRef.current.clientWidth;
+    const projection = d3.geoMercator().fitSize([width, mapHeight], geoData);
+    const path = d3.geoPath().projection(projection);
+
+    if (!selectedFeature) {
+      svg
+        .transition()
+        .duration(250)
+        .call(zoomBehaviorRef.current.transform as any, d3.zoomIdentity);
+      return;
+    }
+
+    const bounds = path.bounds(selectedFeature);
+    const dx = bounds[1][0] - bounds[0][0];
+    const dy = bounds[1][1] - bounds[0][1];
+    const x = (bounds[0][0] + bounds[1][0]) / 2;
+    const y = (bounds[0][1] + bounds[1][1]) / 2;
+    const scale = Math.max(1.4, Math.min(7, 0.86 / Math.max(dx / width, dy / mapHeight)));
+    const translate = [width / 2 - scale * x, mapHeight / 2 - scale * y];
+    const transform = d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale);
+
+    svg
+      .transition()
+      .duration(300)
+      .call(zoomBehaviorRef.current.transform as any, transform);
+  }, [geoData, mapHeight, selectedFeature]);
+
+  const tooltipRenderPos = useMemo(() => {
+    const tooltipWidth = 300;
+    const tooltipHeight = 290;
+    const gutter = 16;
+    const maxLeft = Math.max(gutter, window.innerWidth - tooltipWidth - gutter);
+    const maxTop = Math.max(gutter, window.innerHeight - tooltipHeight - gutter);
+
+    return {
+      left: Math.min(maxLeft, Math.max(gutter, tooltipPos.x + 14)),
+      top: Math.min(maxTop, Math.max(gutter, tooltipPos.y + 14)),
+    };
+  }, [tooltipPos.x, tooltipPos.y]);
 
   if (isLoading) {
     return (
@@ -268,7 +362,7 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
 
   return (
     <div
-      className="relative bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-blue-300"
+      className="relative rounded-xl border border-slate-200 shadow-md overflow-hidden focus-within:ring-2 focus-within:ring-blue-300"
       tabIndex={0}
       role="group"
       aria-label="Interactive precinct map"
@@ -288,19 +382,28 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
         }
       }}
     >
-      <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur p-3 rounded-lg border border-gray-200 shadow-sm">
-        <h4 className="text-sm font-bold text-gray-900 mb-2">Turnout Legend</h4>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-4 h-4 bg-[#ffffd9]"></div>
-          <span className="text-xs text-gray-600">0%</span>
+      <div className="absolute top-4 left-4 z-10 bg-white/92 backdrop-blur p-3 rounded-lg border border-slate-200 shadow-sm w-[260px]">
+        <h4 className="text-sm font-bold text-slate-900 mb-2">Turnout Heatmap</h4>
+        <div className="rounded-md h-2 w-full bg-gradient-to-r from-[#ffffd9] via-[#41b6c4] to-[#081d58]" />
+        <div className="mt-1 flex items-center justify-between text-[10px] font-semibold text-slate-600">
+          <span>Low turnout</span>
+          <span>Mid</span>
+          <span>High turnout</span>
         </div>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-4 h-4 bg-[#41b6c4]"></div>
-          <span className="text-xs text-gray-600">50%</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-[#081d58]"></div>
-          <span className="text-xs text-gray-600">100%</span>
+
+        <div className="mt-2 grid grid-cols-3 gap-2 text-[10px]">
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1">
+            <p className="font-semibold text-slate-700">Mapped</p>
+            <p className="font-bold text-slate-900">{mappedPrecinctCount}</p>
+          </div>
+          <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1">
+            <p className="font-semibold text-slate-700">With Data</p>
+            <p className="font-bold text-slate-900">{withStatsCount}</p>
+          </div>
+          <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1">
+            <p className="font-semibold text-amber-800">Top Opp.</p>
+            <p className="font-bold text-amber-900">{topOpportunityCount}</p>
+          </div>
         </div>
 
         <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
@@ -419,20 +522,21 @@ export const ChoroplethMap: React.FC<ChoroplethMapProps> = ({ stats, selectedPre
       </div>
 
       <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur px-3 py-2 rounded-lg border border-gray-200 shadow-sm text-xs text-gray-600">
-        {selectedPrecinct === 'ALL' ? 'Tip: click a precinct to focus insights.' : `Selected: ${selectedPrecinct}`}
+        {selectedPrecinct === 'ALL' ? 'Tip: click a precinct to focus insights. Click it again to clear.' : `Selected precinct: ${selectedPrecinct}`}
       </div>
 
       <svg 
         ref={svgRef} 
-        className="w-full h-[500px] cursor-grab active:cursor-grabbing"
+        className="w-full h-[500px] cursor-grab active:cursor-grabbing bg-gradient-to-b from-slate-50 to-white"
       />
 
       {hoveredInfo && (
         <motion.div
-          initial={false}
-          animate={{ x: tooltipPos.x + 15, y: tooltipPos.y + 15 }}
-          transition={{ type: 'tween', duration: 0.08 }}
-          className="fixed top-0 left-0 z-50 bg-white p-4 rounded-xl shadow-2xl border border-gray-100 pointer-events-none min-w-[220px]"
+          initial={{ opacity: 0.4, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'tween', duration: 0.1 }}
+          style={{ left: tooltipRenderPos.left, top: tooltipRenderPos.top }}
+          className="fixed z-50 bg-white p-4 rounded-xl shadow-2xl border border-gray-100 pointer-events-none min-w-[260px] max-w-[300px]"
         >
           <div className="space-y-3">
             <div>

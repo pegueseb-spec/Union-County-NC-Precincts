@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Users, MapPinned, Target, Lightbulb, Building2 } from 'lucide-react';
+import { AlertCircle, Users, MapPinned, Target, Lightbulb, Building2, BookOpen } from 'lucide-react';
 
 export function HowToPanel() {
   return (
@@ -91,6 +91,87 @@ export function HowToPanel() {
                 Track Registered/CVAP and Ballots/CVAP side by side. If Registered/CVAP is high but Ballots/CVAP lags, persuasion and turnout operations are both needed.
               </p>
             </div>
+          </div>
+        </section>
+
+        <section className="space-y-4 mt-8">
+          <h3 className="text-xl font-bold text-blue-600 flex items-center gap-2">
+            <BookOpen size={20} />
+            Community Glossary (Tiered)
+          </h3>
+          <p className="text-gray-600 leading-relaxed">
+            Each term is written in three layers so volunteers, team leads, and analysts can work from one shared language.
+            Every entry also includes why the term matters for community building and organizing strategy.
+          </p>
+
+          <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 not-prose">
+            <p className="text-xs uppercase tracking-wider font-bold text-blue-800">Glossary Quick Jump</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <a href="#glossary-turnout" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 border border-blue-200 hover:bg-blue-100">Turnout %</a>
+              <a href="#glossary-density" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 border border-blue-200 hover:bg-blue-100">Registration Density</a>
+              <a href="#glossary-reg-cvap" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 border border-blue-200 hover:bg-blue-100">Registered / CVAP</a>
+              <a href="#glossary-ballots-cvap" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 border border-blue-200 hover:bg-blue-100">Ballots / CVAP</a>
+              <a href="#glossary-opportunity" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 border border-blue-200 hover:bg-blue-100">Opportunity Score</a>
+              <a href="#glossary-scenario" className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 border border-blue-200 hover:bg-blue-100">Scenario Lift</a>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-blue-50/70 text-blue-900">
+                <tr>
+                  <th className="px-4 py-3 text-left font-bold">Term</th>
+                  <th className="px-4 py-3 text-left font-bold">Basic Tier (Volunteer)</th>
+                  <th className="px-4 py-3 text-left font-bold">Field Tier (Organizer)</th>
+                  <th className="px-4 py-3 text-left font-bold">Technical Tier (Analyst)</th>
+                  <th className="px-4 py-3 text-left font-bold">Why This Matters for Community Building</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr id="glossary-turnout" className="border-t border-gray-200 align-top">
+                  <td className="px-4 py-3 font-semibold text-gray-900">Turnout %</td>
+                  <td className="px-4 py-3 text-gray-700">How many registered voters actually cast a ballot.</td>
+                  <td className="px-4 py-3 text-gray-700">Shows where we need voter-contact follow-up and turnout chase plans.</td>
+                  <td className="px-4 py-3 text-gray-700">Calculated as ballots divided by total registration for the selected scope.</td>
+                  <td className="px-4 py-3 text-gray-700">Low turnout often signals participation barriers, trust gaps, or weak neighborhood engagement.</td>
+                </tr>
+                <tr id="glossary-density" className="border-t border-gray-200 align-top bg-gray-50/40">
+                  <td className="px-4 py-3 font-semibold text-gray-900">Registration Density</td>
+                  <td className="px-4 py-3 text-gray-700">How large a group is inside a precinct's registration base.</td>
+                  <td className="px-4 py-3 text-gray-700">Helps decide where culturally specific outreach will have greatest return.</td>
+                  <td className="px-4 py-3 text-gray-700">Group registrations divided by precinct total registrations.</td>
+                  <td className="px-4 py-3 text-gray-700">Supports representation by making sure organizing resources reach communities proportionally.</td>
+                </tr>
+                <tr id="glossary-reg-cvap" className="border-t border-gray-200 align-top">
+                  <td className="px-4 py-3 font-semibold text-gray-900">Registered / CVAP</td>
+                  <td className="px-4 py-3 text-gray-700">Share of voting-age citizens who are registered.</td>
+                  <td className="px-4 py-3 text-gray-700">Shows how much registration growth room still exists in each precinct.</td>
+                  <td className="px-4 py-3 text-gray-700">Registration count divided by citizen voting age population for matching year/precinct.</td>
+                  <td className="px-4 py-3 text-gray-700">Highlights where civic inclusion work can bring more residents into the democratic process.</td>
+                </tr>
+                <tr id="glossary-ballots-cvap" className="border-t border-gray-200 align-top bg-gray-50/40">
+                  <td className="px-4 py-3 font-semibold text-gray-900">Ballots / CVAP</td>
+                  <td className="px-4 py-3 text-gray-700">Share of voting-age citizens who actually voted.</td>
+                  <td className="px-4 py-3 text-gray-700">Guides turnout operations where registration is present but participation lags.</td>
+                  <td className="px-4 py-3 text-gray-700">Ballots cast divided by citizen voting age population.</td>
+                  <td className="px-4 py-3 text-gray-700">Connects civic participation to neighborhood voice and policy influence.</td>
+                </tr>
+                <tr id="glossary-opportunity" className="border-t border-gray-200 align-top">
+                  <td className="px-4 py-3 font-semibold text-gray-900">Opportunity Score</td>
+                  <td className="px-4 py-3 text-gray-700">A ranking that points to precincts where outreach can move the most votes.</td>
+                  <td className="px-4 py-3 text-gray-700">Used to prioritize staffing, canvassing, and targeted messaging.</td>
+                  <td className="px-4 py-3 text-gray-700">Weighted composite of turnout gap, registration mass, CVAP gap, and recent decline.</td>
+                  <td className="px-4 py-3 text-gray-700">Helps direct limited organizer time toward communities with highest engagement upside.</td>
+                </tr>
+                <tr id="glossary-scenario" className="border-t border-gray-200 align-top bg-gray-50/40">
+                  <td className="px-4 py-3 font-semibold text-gray-900">Scenario Lift</td>
+                  <td className="px-4 py-3 text-gray-700">A "what if" turnout increase assumption.</td>
+                  <td className="px-4 py-3 text-gray-700">Used to set realistic ballot goals for volunteer plans and partner asks.</td>
+                  <td className="px-4 py-3 text-gray-700">Applies a modeled turnout delta with conservative/base/aggressive confidence bands.</td>
+                  <td className="px-4 py-3 text-gray-700">Turns data into shared goals communities can organize around and measure over time.</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
 

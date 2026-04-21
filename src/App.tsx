@@ -414,6 +414,7 @@ export default function App() {
     return 'ALL';
   });
   const [selectedOpportunityTargets, setSelectedOpportunityTargets] = useState<string[]>([]);
+  const [lastVerificationRunAt, setLastVerificationRunAt] = useState<string>(() => new Date().toISOString());
   const [licenseAccepted, setLicenseAccepted] = useState<boolean>(() => {
     return getStoredString(STORAGE_KEYS.licenseAccepted, '') === 'true';
   });
@@ -1016,6 +1017,10 @@ export default function App() {
     window.localStorage.setItem(STORAGE_KEYS.opportunityActionFilter, opportunityActionFilter);
   }, [opportunityActionFilter]);
 
+  useEffect(() => {
+    setLastVerificationRunAt(new Date().toISOString());
+  }, [voterUploadSummary, historyUploadSummary, cvapUploadSummary]);
+
   const avgRegistrationShareOfCvap = useMemo(() => {
     const totalCvap = filteredStats.reduce((acc, s) => acc + s.cvapTotal, 0);
     const totalRegistered = filteredStats.reduce((acc, s) => acc + s.totalReg, 0);
@@ -1122,6 +1127,113 @@ export default function App() {
 
     return alerts;
   }, [cvapMatchRate, cvapSuccessRate, historySuccessRate, precinctYearCoverage, voterSuccessRate]);
+
+  const sourceVerificationLedger = useMemo(() => {
+    const buildVerification = (summary: UploadSummary | null, targetRate: number) => {
+      if (!summary) {
+        return {
+          parsedRows: null,
+          usableRows: null,
+          droppedRows: null,
+          successRate: null,
+          verificationStatus: 'Pending source load',
+        };
+      }
+
+      const successRate = summary.parsedRows > 0 ? (summary.usableRows / summary.parsedRows) * 100 : null;
+      const droppedRows = Math.max(summary.droppedRows, 0);
+      const meetsTarget = successRate !== null && successRate >= targetRate;
+
+      return {
+        parsedRows: summary.parsedRows,
+        usableRows: summary.usableRows,
+        droppedRows,
+        successRate,
+        verificationStatus: meetsTarget
+          ? `Verified (${targetRate}% parse threshold met)`
+          : `Needs review (${targetRate}% parse threshold not met)`,
+      };
+    };
+
+    const voterVerification = buildVerification(voterUploadSummary, 95);
+    const historyVerification = buildVerification(historyUploadSummary, 95);
+    const cvapVerification = buildVerification(cvapUploadSummary, 90);
+
+    const builtInFreshness = new Date(BUILT_IN_DATA_METADATA.generatedAtUtc);
+    const freshnessAgeDays = Number.isFinite(builtInFreshness.getTime())
+      ? (Date.now() - builtInFreshness.getTime()) / (1000 * 60 * 60 * 24)
+      : null;
+    const freshnessStatus = freshnessAgeDays === null
+      ? 'Unknown freshness'
+      : freshnessAgeDays <= 120
+        ? `Fresh (${Math.round(freshnessAgeDays)} days old)`
+        : `Aging (${Math.round(freshnessAgeDays)} days old)`;
+
+    return [
+      {
+        dataset: 'Voter Registration Stats',
+        sourceType: 'Built-in JSON',
+        sourceReference: BUILT_IN_DATA_METADATA.voterStatsUrl,
+        targetRate: '95%',
+        ...voterVerification,
+      },
+      {
+        dataset: 'Voter History Stats',
+        sourceType: 'Built-in JSON',
+        sourceReference: BUILT_IN_DATA_METADATA.historyStatsUrl,
+        targetRate: '95%',
+        ...historyVerification,
+      },
+      {
+        dataset: 'CVAP Inputs',
+        sourceType: cvapUploadSummary ? 'Uploaded file' : 'No upload yet',
+        sourceReference: cvapUploadSummary ? 'User-uploaded CVAP source' : 'Awaiting CVAP upload',
+        targetRate: '90%',
+        ...cvapVerification,
+      },
+      {
+        dataset: 'Built-in Source Freshness',
+        sourceType: 'Metadata',
+        sourceReference: BUILT_IN_DATA_METADATA.generatedAtUtc,
+        targetRate: '120 days',
+        parsedRows: null,
+        usableRows: null,
+        droppedRows: null,
+        successRate: null,
+        verificationStatus: freshnessStatus,
+      },
+    ];
+  }, [cvapUploadSummary, historyUploadSummary, voterUploadSummary]);
+
+  const verificationConfidenceScore = useMemo(() => {
+    const scoredRows = sourceVerificationLedger.map((row) => {
+      if (row.successRate !== null) {
+        return Math.max(0, Math.min(100, row.successRate));
+      }
+
+      if (row.verificationStatus.startsWith('Fresh')) return 100;
+      if (row.verificationStatus.startsWith('Aging')) return 70;
+      return 50;
+    });
+
+    const baseScore = scoredRows.length > 0
+      ? scoredRows.reduce((acc, score) => acc + score, 0) / scoredRows.length
+      : 0;
+
+    const needsReviewPenalty = sourceVerificationLedger.filter((row) => row.verificationStatus.startsWith('Needs review')).length * 12;
+    const pendingPenalty = sourceVerificationLedger.filter((row) => row.verificationStatus.startsWith('Pending')).length * 8;
+    const unknownPenalty = sourceVerificationLedger.filter((row) => row.verificationStatus.startsWith('Unknown')).length * 10;
+    const alertPenalty = Math.min(20, dataQualityAlerts.length * 5);
+
+    const adjusted = baseScore - needsReviewPenalty - pendingPenalty - unknownPenalty - alertPenalty;
+    return Math.max(0, Math.min(100, adjusted));
+  }, [dataQualityAlerts.length, sourceVerificationLedger]);
+
+  const verificationConfidenceLabel = useMemo(() => {
+    if (verificationConfidenceScore >= 90) return 'High confidence';
+    if (verificationConfidenceScore >= 75) return 'Moderate confidence';
+    return 'Needs review';
+  }, [verificationConfidenceScore]);
 
   const scenarioProjection = useMemo(() => {
     const rows = filteredStats.map((s) => {
@@ -1235,6 +1347,24 @@ export default function App() {
     }));
 
     exportCsvFile(rows, `${ACTIVE_COUNTY.exportFilePrefix}_Analysis_${selectedYear}.csv`);
+  };
+
+  const exportSourceVerificationLedgerCsv = () => {
+    const rows = sourceVerificationLedger.map((row) => ({
+      Dataset: row.dataset,
+      SourceType: row.sourceType,
+      SourceReference: row.sourceReference,
+      ParsedRows: row.parsedRows ?? '',
+      UsableRows: row.usableRows ?? '',
+      DroppedRows: row.droppedRows ?? '',
+      SuccessRatePct: row.successRate !== null ? row.successRate.toFixed(1) : '',
+      TargetThreshold: row.targetRate,
+      VerificationStatus: row.verificationStatus,
+      VerificationRunAtUtc: lastVerificationRunAt,
+    }));
+
+    exportCsvFile(rows, `source_verification_ledger_${selectedYear}.csv`);
+    setScenarioNotice({ type: 'success', message: 'Exported source verification ledger CSV.' });
   };
 
   const copyScenarioAssumptions = async () => {
@@ -1952,9 +2082,21 @@ export default function App() {
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <h3 className="text-lg font-bold text-gray-900">Data Quality and Provenance</h3>
-                  <p className="text-xs text-gray-500">Built-in source: {BUILT_IN_DATA_METADATA.source}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn(
+                      'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+                      verificationConfidenceScore >= 90
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : verificationConfidenceScore >= 75
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
+                    )}>
+                      Verification Confidence: {verificationConfidenceScore.toFixed(0)}/100 ({verificationConfidenceLabel})
+                    </span>
+                    <p className="text-xs text-gray-500">Built-in source: {BUILT_IN_DATA_METADATA.source}</p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1991,6 +2133,68 @@ export default function App() {
                     <p className="text-xs uppercase tracking-wider font-bold text-gray-500">Election Coverage</p>
                     <p className="mt-1 font-semibold text-gray-900">{BUILT_IN_DATA_METADATA.electionsIncluded.join(', ')}</p>
                     <p className="text-xs text-gray-500 mt-1">Built-in CVAP included: {BUILT_IN_DATA_METADATA.cvapIncluded ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-wider font-bold text-gray-600">Source Verification Ledger</p>
+                      <p className="text-xs text-gray-500">Why this matters: trusted source records protect field decisions and community credibility.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                        Last verification run: {new Date(lastVerificationRunAt).toLocaleString()}
+                      </span>
+                      <button
+                        onClick={exportSourceVerificationLedgerCsv}
+                        className="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      >
+                        Export Verification Ledger CSV
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200">
+                          <th className="px-2 py-2">Dataset</th>
+                          <th className="px-2 py-2">Source</th>
+                          <th className="px-2 py-2">Parsed</th>
+                          <th className="px-2 py-2">Usable</th>
+                          <th className="px-2 py-2">Dropped</th>
+                          <th className="px-2 py-2">Success</th>
+                          <th className="px-2 py-2">Verification</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sourceVerificationLedger.map((row) => (
+                          <tr key={row.dataset} className="border-b border-gray-100 text-gray-700">
+                            <td className="px-2 py-2 font-semibold text-gray-900">{row.dataset}</td>
+                            <td className="px-2 py-2">
+                              <p>{row.sourceType}</p>
+                              <p className="text-xs text-gray-500">{row.sourceReference}</p>
+                            </td>
+                            <td className="px-2 py-2">{row.parsedRows === null ? 'N/A' : row.parsedRows.toLocaleString()}</td>
+                            <td className="px-2 py-2">{row.usableRows === null ? 'N/A' : row.usableRows.toLocaleString()}</td>
+                            <td className="px-2 py-2">{row.droppedRows === null ? 'N/A' : row.droppedRows.toLocaleString()}</td>
+                            <td className="px-2 py-2">{row.successRate === null ? `Target ${row.targetRate}` : `${row.successRate.toFixed(1)}%`}</td>
+                            <td className="px-2 py-2">
+                              <span className={cn(
+                                'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+                                row.verificationStatus.startsWith('Verified') || row.verificationStatus.startsWith('Fresh')
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : row.verificationStatus.startsWith('Pending')
+                                    ? 'bg-slate-100 text-slate-700'
+                                    : 'bg-amber-100 text-amber-800'
+                              )}>
+                                {row.verificationStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 

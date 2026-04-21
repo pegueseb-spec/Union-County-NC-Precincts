@@ -18,6 +18,7 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Highlights top-quartile opportunity precincts using a weighted score model
 - Lets organizers tune opportunity-score weights directly in the map controls
 - Shows data quality and provenance indicators (parse success, coverage, freshness)
+- Adds a source verification ledger (dataset source, parsed/usable/dropped rows, verification status)
 - Includes a scenario planner to estimate added ballots from turnout-lift assumptions
 - Exports scenario projections as CSV for field planning handoff
 - Provides a one-click planning bundle CSV combining summary and scenario rows
@@ -34,7 +35,57 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Adds focused field packet export for selected precincts (summary + scenario + recommended action)
 - Persists key dashboard controls between sessions (year, precinct, scenario lift, action filter)
 - Adds conservative/base/aggressive confidence bands for scenario planning outputs
+- Includes a tiered community glossary (volunteer, organizer, analyst definitions + organizing relevance)
 - Exports the filtered dashboard view as CSV
+
+## Data Source Verification
+
+The dashboard includes a Data Quality and Provenance panel with a Source Verification Ledger to help teams evaluate trust in the inputs before acting.
+
+Ledger fields shown in app:
+- Dataset name (voter stats, history stats, CVAP, freshness metadata)
+- Source type and source reference
+- Parsed rows, usable rows, and dropped rows
+- Parse success rate versus target thresholds
+- Verification status (Verified, Needs review, Pending source load, or Fresh/Aging)
+- Last verification run timestamp shown directly in the ledger header
+- One-click `Export Verification Ledger CSV` for partner briefings and governance records
+- Executive `Verification Confidence` score (0-100) summarizing overall source trust posture
+
+Current verification thresholds:
+- Voter parse success target: 95%
+- History parse success target: 95%
+- CVAP parse success target: 90%
+- Built-in freshness review target: 120 days
+
+Community relevance:
+- Verification protects organizers from acting on low-trust data.
+- Transparent source tracking strengthens accountability with residents, partners, and donors.
+- Quality checks improve fairness by reducing the risk that underserved precincts are misclassified.
+- A single confidence score helps leadership quickly assess readiness before field deployment decisions.
+
+## Community-First Glossary
+
+The in-app How-To tab now includes a Tiered Community Glossary with five columns:
+- Term
+- Basic Tier (Volunteer)
+- Field Tier (Organizer)
+- Technical Tier (Analyst)
+- Why This Matters for Community Building
+- Glossary Quick Jump index for fast navigation during live trainings and team huddles
+
+Core terms included:
+- Turnout %
+- Registration Density
+- Registered / CVAP
+- Ballots / CVAP
+- Opportunity Score
+- Scenario Lift
+
+Purpose:
+- Build shared language across mixed-experience teams
+- Make analytics actionable in field operations
+- Keep interpretation grounded in community organizing outcomes, not just metrics
 
 ## Run Locally
 

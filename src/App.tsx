@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { BUILT_IN_DATA_METADATA } from './data/unionCountyBuiltInData';
+import { computeOpportunityScores, getTopQuartileOpportunityScores } from './lib/opportunityScoring';
 import { CVAPRecord, HistoryRecord, PrecinctStats, VoterRecord } from './types';
 
 const ChoroplethMap = lazy(async () => {
@@ -700,52 +701,22 @@ export default function App() {
       actionCategory: 'Registration Growth' | 'Persuasion' | 'GOTV Chase' | 'Election Day Logistics';
     }>;
 
-    const normalize = (value: number, min: number, max: number) => {
-      if (!Number.isFinite(value)) return 0;
-      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 0;
-      return (value - min) / (max - min);
-    };
+    const statsByPrecinct = new Map(currentYearStats.map((row) => [row.precinct, row]));
+    const topQuartileScores = getTopQuartileOpportunityScores(computeOpportunityScores(currentYearStats));
 
-    const countyTurnout = (currentYearStats.reduce((acc, s) => acc + s.totalBallots, 0) / (currentYearStats.reduce((acc, s) => acc + s.totalReg, 0) || 1)) * 100;
-    const turnoutGapValues = currentYearStats.map((s) => Math.max(0, countyTurnout - s.turnoutOverall));
-    const registrationValues = currentYearStats.map((s) => s.totalReg);
-    const cvapGapValues = currentYearStats.map((s) => s.cvapTotal > 0 ? Math.max(0, 100 - s.ballotShareOfCvap) : 0);
-    const declineValues = currentYearStats.map((s) => Math.max(0, -(s.turnoutDeltaYoY ?? 0)));
-
-    const turnoutGapMin = Math.min(...turnoutGapValues);
-    const turnoutGapMax = Math.max(...turnoutGapValues);
-    const registrationMin = Math.min(...registrationValues);
-    const registrationMax = Math.max(...registrationValues);
-    const cvapGapMin = Math.min(...cvapGapValues);
-    const cvapGapMax = Math.max(...cvapGapValues);
-    const declineMin = Math.min(...declineValues);
-    const declineMax = Math.max(...declineValues);
-
-    const weighted = currentYearStats
-      .map((s) => {
-        const turnoutGapNorm = normalize(Math.max(0, countyTurnout - s.turnoutOverall), turnoutGapMin, turnoutGapMax);
-        const registrationMassNorm = normalize(s.totalReg, registrationMin, registrationMax);
-        const cvapGapNorm = normalize(s.cvapTotal > 0 ? Math.max(0, 100 - s.ballotShareOfCvap) : 0, cvapGapMin, cvapGapMax);
-        const declineNorm = normalize(Math.max(0, -(s.turnoutDeltaYoY ?? 0)), declineMin, declineMax);
-        const score = (0.45 * turnoutGapNorm) + (0.25 * registrationMassNorm) + (0.2 * cvapGapNorm) + (0.1 * declineNorm);
-
-        return {
-          precinct: s.precinct,
-          score,
-          turnoutGap: turnoutGapNorm,
-          registrationMass: registrationMassNorm,
-          cvapGap: cvapGapNorm,
-          recentDecline: declineNorm,
-          actionCategory: getRecommendedActionCategory(s.registrationShareOfCvap, s.turnoutOverall, s.turnoutDeltaYoY),
-        };
-      })
-      .sort((a, b) => b.score - a.score);
-
-    const topQuartileCount = Math.max(1, Math.ceil(weighted.length * 0.25));
-    return weighted.slice(0, topQuartileCount).map((row, index) => ({
-      rank: index + 1,
-      ...row,
-    }));
+    return topQuartileScores.map((row, index) => {
+      const stat = statsByPrecinct.get(row.precinct);
+      return {
+        rank: index + 1,
+        precinct: row.precinct,
+        score: row.score,
+        turnoutGap: row.turnoutGapNorm,
+        registrationMass: row.registrationMassNorm,
+        cvapGap: row.cvapGapNorm,
+        recentDecline: row.declineNorm,
+        actionCategory: getRecommendedActionCategory(stat?.registrationShareOfCvap ?? 0, stat?.turnoutOverall ?? 0, stat?.turnoutDeltaYoY ?? null),
+      };
+    });
   }, [currentYearStats]);
 
   const filteredOpportunityTargets = useMemo(() => {

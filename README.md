@@ -24,6 +24,10 @@ Developed by JBPTV Consultancy Group. This implementation is designed as a reusa
 - Includes an assumptions block in planning bundle exports (filters, turnout lift, timestamp)
 - Adds a one-click Copy Assumptions action for briefing notes and chat handoffs
 - Shows inline success/error notices for scenario copy/export actions
+- Adds an Opportunity Targets table with ranked top-quartile precincts and quick focus actions
+- Suggests recommended action categories per target (registration growth, persuasion, GOTV chase, election-day logistics)
+- Adds an action filter to isolate and export one strategy lane at a time
+- Exports Opportunity Targets rankings to CSV for direct field handoff
 - Exports the filtered dashboard view as CSV
 
 ## Run Locally

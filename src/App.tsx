@@ -83,6 +83,26 @@ const formatPercent = (value: number | null) => {
   return `${value.toFixed(1)}%`;
 };
 
+const getRecommendedActionCategory = (
+  registrationShareOfCvap: number,
+  turnoutOverall: number,
+  turnoutDeltaYoY: number | null,
+): 'Registration Growth' | 'Persuasion' | 'GOTV Chase' | 'Election Day Logistics' => {
+  if (registrationShareOfCvap > 0 && registrationShareOfCvap < 60) {
+    return 'Registration Growth';
+  }
+
+  if (turnoutOverall < 45) {
+    return 'Persuasion';
+  }
+
+  if (turnoutDeltaYoY !== null && turnoutDeltaYoY < -3) {
+    return 'Election Day Logistics';
+  }
+
+  return 'GOTV Chase';
+};
+
 const validateUploadFile = (file: File) => {
   if (!FILE_UPLOAD_PATTERN.test(file.name)) {
     return 'Only .txt and .csv files are accepted.';
@@ -351,6 +371,7 @@ export default function App() {
   const [selectedPrecinct, setSelectedPrecinct] = useState<string>("ALL");
   const [scenarioTurnoutLiftPct, setScenarioTurnoutLiftPct] = useState<number>(5);
   const [scenarioNotice, setScenarioNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [opportunityActionFilter, setOpportunityActionFilter] = useState<'ALL' | 'Registration Growth' | 'Persuasion' | 'GOTV Chase' | 'Election Day Logistics'>('ALL');
 
   // --- Data Processing ---
 
@@ -666,6 +687,71 @@ export default function App() {
 
   const currentYearStats = useMemo(() => processedStats.filter(s => s.year === selectedYear), [processedStats, selectedYear]);
   const currentYearCvapPrecincts = useMemo(() => currentYearStats.filter(s => s.cvapTotal > 0), [currentYearStats]);
+
+  const opportunityTargets = useMemo(() => {
+    if (currentYearStats.length === 0) return [] as Array<{
+      rank: number;
+      precinct: string;
+      score: number;
+      turnoutGap: number;
+      registrationMass: number;
+      cvapGap: number;
+      recentDecline: number;
+      actionCategory: 'Registration Growth' | 'Persuasion' | 'GOTV Chase' | 'Election Day Logistics';
+    }>;
+
+    const normalize = (value: number, min: number, max: number) => {
+      if (!Number.isFinite(value)) return 0;
+      if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 0;
+      return (value - min) / (max - min);
+    };
+
+    const countyTurnout = (currentYearStats.reduce((acc, s) => acc + s.totalBallots, 0) / (currentYearStats.reduce((acc, s) => acc + s.totalReg, 0) || 1)) * 100;
+    const turnoutGapValues = currentYearStats.map((s) => Math.max(0, countyTurnout - s.turnoutOverall));
+    const registrationValues = currentYearStats.map((s) => s.totalReg);
+    const cvapGapValues = currentYearStats.map((s) => s.cvapTotal > 0 ? Math.max(0, 100 - s.ballotShareOfCvap) : 0);
+    const declineValues = currentYearStats.map((s) => Math.max(0, -(s.turnoutDeltaYoY ?? 0)));
+
+    const turnoutGapMin = Math.min(...turnoutGapValues);
+    const turnoutGapMax = Math.max(...turnoutGapValues);
+    const registrationMin = Math.min(...registrationValues);
+    const registrationMax = Math.max(...registrationValues);
+    const cvapGapMin = Math.min(...cvapGapValues);
+    const cvapGapMax = Math.max(...cvapGapValues);
+    const declineMin = Math.min(...declineValues);
+    const declineMax = Math.max(...declineValues);
+
+    const weighted = currentYearStats
+      .map((s) => {
+        const turnoutGapNorm = normalize(Math.max(0, countyTurnout - s.turnoutOverall), turnoutGapMin, turnoutGapMax);
+        const registrationMassNorm = normalize(s.totalReg, registrationMin, registrationMax);
+        const cvapGapNorm = normalize(s.cvapTotal > 0 ? Math.max(0, 100 - s.ballotShareOfCvap) : 0, cvapGapMin, cvapGapMax);
+        const declineNorm = normalize(Math.max(0, -(s.turnoutDeltaYoY ?? 0)), declineMin, declineMax);
+        const score = (0.45 * turnoutGapNorm) + (0.25 * registrationMassNorm) + (0.2 * cvapGapNorm) + (0.1 * declineNorm);
+
+        return {
+          precinct: s.precinct,
+          score,
+          turnoutGap: turnoutGapNorm,
+          registrationMass: registrationMassNorm,
+          cvapGap: cvapGapNorm,
+          recentDecline: declineNorm,
+          actionCategory: getRecommendedActionCategory(s.registrationShareOfCvap, s.turnoutOverall, s.turnoutDeltaYoY),
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    const topQuartileCount = Math.max(1, Math.ceil(weighted.length * 0.25));
+    return weighted.slice(0, topQuartileCount).map((row, index) => ({
+      rank: index + 1,
+      ...row,
+    }));
+  }, [currentYearStats]);
+
+  const filteredOpportunityTargets = useMemo(() => {
+    if (opportunityActionFilter === 'ALL') return opportunityTargets;
+    return opportunityTargets.filter((target) => target.actionCategory === opportunityActionFilter);
+  }, [opportunityActionFilter, opportunityTargets]);
 
   const filteredStats = useMemo(() => {
     return processedStats.filter(s => {
@@ -1182,6 +1268,30 @@ export default function App() {
 
     exportCsvFile([...assumptionRows, ...summaryRows, ...scenarioRows], `planning_bundle_${selectedYear}.csv`);
     setScenarioNotice({ type: 'success', message: `Exported planning bundle CSV for ${selectedYear}.` });
+  };
+
+  const exportOpportunityTargetsCsv = () => {
+    if (filteredOpportunityTargets.length === 0) {
+      setScenarioNotice({ type: 'error', message: 'No opportunity targets available for export.' });
+      return;
+    }
+
+    const rows = filteredOpportunityTargets.map((target) => ({
+      Year: selectedYear,
+      Rank: target.rank,
+      Precinct: target.precinct,
+      'Recommended Action': target.actionCategory,
+      'Opportunity Score (0-100)': (target.score * 100).toFixed(1),
+      'Turnout Gap Driver (0-100)': (target.turnoutGap * 100).toFixed(0),
+      'Registration Mass Driver (0-100)': (target.registrationMass * 100).toFixed(0),
+      'CVAP Gap Driver (0-100)': (target.cvapGap * 100).toFixed(0),
+      'Recent Decline Driver (0-100)': (target.recentDecline * 100).toFixed(0),
+      'Precinct Filter': selectedPrecinct,
+      'Action Filter': opportunityActionFilter,
+    }));
+
+    exportCsvFile(rows, `opportunity_targets_${selectedYear}.csv`);
+    setScenarioNotice({ type: 'success', message: `Exported ${filteredOpportunityTargets.length} opportunity target rows for ${selectedYear}.` });
   };
 
   return (
@@ -1703,6 +1813,85 @@ export default function App() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <h3 className="text-lg font-bold text-gray-900">Opportunity Targets (Top Quartile)</h3>
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="opportunity-action-filter" className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Action Filter</label>
+                    <select
+                      id="opportunity-action-filter"
+                      aria-label="Opportunity Action Filter"
+                      value={opportunityActionFilter}
+                      onChange={(event) => setOpportunityActionFilter(event.target.value as 'ALL' | 'Registration Growth' | 'Persuasion' | 'GOTV Chase' | 'Election Day Logistics')}
+                      className="bg-gray-50 border border-gray-200 rounded-md px-2 py-1 text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-amber-500 outline-none"
+                    >
+                      <option value="ALL">All actions</option>
+                      <option value="Registration Growth">Registration Growth</option>
+                      <option value="Persuasion">Persuasion</option>
+                      <option value="GOTV Chase">GOTV Chase</option>
+                      <option value="Election Day Logistics">Election Day Logistics</option>
+                    </select>
+                    <p className="text-xs text-gray-500">Weighted model: turnout gap 45%, registration mass 25%, CVAP gap 20%, recent decline 10%.</p>
+                    <button
+                      onClick={exportOpportunityTargetsCsv}
+                      disabled={filteredOpportunityTargets.length === 0 || isProcessing}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                        filteredOpportunityTargets.length === 0 || isProcessing
+                          ? "bg-amber-100 text-amber-300 cursor-not-allowed"
+                          : "bg-amber-500 text-white hover:bg-amber-600"
+                      )}
+                    >
+                      Export Targets CSV
+                    </button>
+                  </div>
+                </div>
+
+                {filteredOpportunityTargets.length === 0 ? (
+                  <p className="text-sm text-gray-500">No opportunity targets are available for the selected year and filter.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Rank</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Precinct</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Score</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Recommended Action</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Turnout Gap</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. Mass</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">CVAP Gap</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Decline</th>
+                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredOpportunityTargets.map((target) => (
+                          <tr key={`target-${target.precinct}`} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-bold text-gray-800">{target.rank}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-900">{target.precinct}</td>
+                            <td className="px-4 py-3 text-sm text-gray-800">{(target.score * 100).toFixed(1)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{target.actionCategory}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{(target.turnoutGap * 100).toFixed(0)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{(target.registrationMass * 100).toFixed(0)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{(target.cvapGap * 100).toFixed(0)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{(target.recentDecline * 100).toFixed(0)}</td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => setSelectedPrecinct(target.precinct)}
+                                className="px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100"
+                              >
+                                Focus Precinct
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {/* Map Section */}

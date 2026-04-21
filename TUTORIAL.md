@@ -134,6 +134,17 @@ Use the Scenario Planner section to estimate impact before committing resources:
 8. Use Copy Assumptions to paste the exact scenario context into briefs, tickets, or team chat
 9. Confirm the inline success/error notice after copy/export actions before sharing outputs
 
+## Opportunity Targets Panel
+
+Use Opportunity Targets (Top Quartile) to operationalize map highlights quickly:
+
+1. Review ranked precinct score order for the selected year
+2. Compare driver intensity columns (turnout gap, registration mass, CVAP gap, recent decline)
+3. Use Focus Precinct to jump directly into detailed precinct diagnostics
+4. Use Export Targets CSV to distribute ranked target lists across field teams
+5. Use Recommended Action to assign first-pass field strategy per target precinct
+6. Apply Action Filter to export a strategy-specific target pack (for example only GOTV Chase)
+
 Notes:
 
 - Projection caps ballots at registered voters in each precinct

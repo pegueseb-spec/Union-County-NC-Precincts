@@ -137,7 +137,34 @@ describe('App', () => {
     await acceptLicense();
     await screen.findByText(/trend signals \(2024 vs 2023\)/i);
     expect(screen.getByText(/county turnout Δ:/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/\+30.00 pts/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\+80.00 pts/i).length).toBeGreaterThan(0);
+  });
+
+  it('updates total registered when election year changes', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await acceptLicense();
+    await screen.findByText(/turnout choropleth map/i);
+
+    const getTotalRegisteredCardValue = () => {
+      const title = screen.getByText(/total registered/i);
+      const card = title.closest('div.bg-white');
+      const value = card?.querySelector('h3')?.textContent;
+      expect(value).toBeTruthy();
+      return value;
+    };
+
+    // 2024 has voter registration rows in the mocked data.
+    expect(getTotalRegisteredCardValue()).toBe('10');
+
+    const yearSelect = screen.getByLabelText(/election year/i);
+    await user.selectOptions(yearSelect, '2023');
+
+    // 2023 has history rows only in the mock, so Total Registered should drop to 0.
+    await waitFor(() => {
+      expect(getTotalRegisteredCardValue()).toBe('0');
+    });
   });
 
   it('restores persisted dashboard controls from localStorage', async () => {

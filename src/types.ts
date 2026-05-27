@@ -7,6 +7,7 @@ export interface VoterRecord {
   ethnic_code: string;
   sex_code: string;
   total_voters: number;
+  election_date?: string; // Used to derive year when available
 }
 
 export interface HistoryRecord {

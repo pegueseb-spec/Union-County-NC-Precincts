@@ -12,6 +12,12 @@ export function HowToPanel() {
           <p className="text-gray-600 leading-relaxed">
             This dashboard turns precinct-level voter registration and turnout files into a field-ready intelligence view. It helps teams prioritize where outreach can produce the largest measurable gain by highlighting turnout gaps, registration pressure versus CVAP, and demographic composition shifts.
           </p>
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900">
+            <p className="m-0 font-semibold flex items-center gap-2"><AlertCircle size={16} /> Methodology Note</p>
+            <p className="mt-2 mb-0">
+              Turnout % in this app is calculated from NCSBE ENRS files as ballots from <span className="font-semibold">history_stats</span> divided by registered voters from <span className="font-semibold">voter_stats</span> for the selected year and precinct scope. Official NCSBE web views may use different denominator definitions or publication cuts, which can make percentages look different even when source files match.
+            </p>
+          </div>
           <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-900">
             <p className="m-0 font-semibold flex items-center gap-2"><Building2 size={16} /> Developed by JBPTV Consultancy Group</p>
             <p className="mt-2 mb-0">Concept and implementation are designed as a scalable template for expansion from Union County to all 100 North Carolina counties.</p>

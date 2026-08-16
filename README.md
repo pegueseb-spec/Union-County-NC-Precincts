@@ -126,9 +126,11 @@ Prerequisites: Node.js 20+
    `npm run test:run`
 3. Build the production bundle:
    `npm run build`
-4. Run the end-to-end share readiness preflight:
+4. Verify bundled election totals against official NCSBE ENRS files:
+   `npm run data:verify`
+5. Run the end-to-end share readiness preflight:
    `npm run release:preflight`
-5. After deploy, open the hosted app and print the latest deploy run details:
+6. After deploy, open the hosted app and print the latest deploy run details:
    `npm run release:postdeploy`
    - Uses `gh` when available
    - Falls back to GitHub API when `gh` is not installed

@@ -1,0 +1,100 @@
+name: Health Check
+
+on:
+  schedule:
+    - cron: '0 13 * * 2'
+  workflow_dispatch:
+    inputs:
+      verify_scope:
+        description: Data verification scope to run
+        required: true
+        default: recent
+        type: choice
+        options:
+          - recent
+          - full
+
+permissions:
+  contents: read
+
+jobs:
+  app-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        id: setup_node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+
+      - name: Show runtime versions
+        id: runtime_versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        id: install
+        run: npm ci --include=dev
+
+      - name: Type check
+        id: lint
+        run: npm run lint
+
+      - name: Run smoke tests
+        id: tests
+        run: npm run test:run
+
+      - name: Build app
+        id: build
+        env:
+          NODE_OPTIONS: --max_old_space_size=4096
+        run: npm run build
+
+      - name: Audit production dependencies
+        id: audit_prod
+        run: npm run audit:prod
+
+      - name: Verify recent official election data
+        id: verify_recent
+        if: github.event_name == 'schedule' || inputs.verify_scope == 'recent'
+        run: npm run data:verify -- -Years 2024 2025
+
+      - name: Verify full official election data
+        id: verify_full
+        if: github.event_name == 'workflow_dispatch' && inputs.verify_scope == 'full'
+        run: npm run data:verify
+
+      - name: Publish run summary
+        if: always()
+        shell: pwsh
+        run: |
+          $verifyScope = if ('${{ github.event_name }}' -eq 'schedule') { 'recent (scheduled)' } elseif ('${{ inputs.verify_scope }}' -eq 'full') { 'full (manual)' } else { 'recent (manual)' }
+          @"
+          ## Health Check Summary
+
+          | Check | Result |
+          | --- | --- |
+          | Checkout | ${{ steps.checkout.outcome }} |
+          | Setup Node | ${{ steps.setup_node.outcome }} |
+          | Runtime versions | ${{ steps.runtime_versions.outcome }} |
+          | Install dependencies | ${{ steps.install.outcome }} |
+          | Type check | ${{ steps.lint.outcome }} |
+          | Smoke tests | ${{ steps.tests.outcome }} |
+          | Build app | ${{ steps.build.outcome }} |
+          | Production audit | ${{ steps.audit_prod.outcome }} |
+          | Recent data verification | ${{ steps.verify_recent.outcome || 'skipped' }} |
+          | Full data verification | ${{ steps.verify_full.outcome || 'skipped' }} |
+
+          - Event: ${{ github.event_name }}
+          - Verification scope: $verifyScope
+          - Ref: ${{ github.ref }}
+          - Commit: ${{ github.sha }}
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append

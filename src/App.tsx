@@ -417,6 +417,8 @@ export default function App() {
     return 'ALL';
   });
   const [selectedOpportunityTargets, setSelectedOpportunityTargets] = useState<string[]>([]);
+  const [dashboardGoal, setDashboardGoal] = useState<'priority' | 'lift' | 'brief'>('priority');
+  const hasUserChosenDashboardGoal = React.useRef(false);
   const [lastVerificationRunAt, setLastVerificationRunAt] = useState<string>(() => new Date().toISOString());
   const [licenseAccepted, setLicenseAccepted] = useState<boolean>(() => {
     return getStoredString(STORAGE_KEYS.licenseAccepted, '') === 'true';
@@ -796,6 +798,30 @@ export default function App() {
     const visiblePrecincts = new Set(filteredOpportunityTargets.map((target) => target.precinct));
     setSelectedOpportunityTargets((previous) => previous.filter((precinct) => visiblePrecincts.has(precinct)));
   }, [filteredOpportunityTargets]);
+
+  useEffect(() => {
+    if (!hasUserChosenDashboardGoal.current) return;
+
+    if (dashboardGoal === 'priority') {
+      setSelectedPrecinct('ALL');
+      setOpportunityActionFilter('ALL');
+      return;
+    }
+
+    if (dashboardGoal === 'lift') {
+      setSelectedPrecinct('ALL');
+      setScenarioTurnoutLiftPct((previous) => (previous === 0 ? 5 : previous));
+      return;
+    }
+
+    if (dashboardGoal === 'brief') {
+      const topTarget = opportunityTargets[0]?.precinct;
+      if (topTarget) {
+        setSelectedPrecinct(topTarget);
+      }
+      setOpportunityActionFilter('ALL');
+    }
+  }, [dashboardGoal, opportunityTargets]);
 
   const opportunityScoreByPrecinct = useMemo(() => {
     const scores = computeOpportunityScores(currentYearStats);
@@ -1257,6 +1283,22 @@ export default function App() {
     if (verificationConfidenceScore >= 75) return 'Moderate confidence';
     return 'Needs review';
   }, [verificationConfidenceScore]);
+
+  const recommendedFocus = useMemo(() => {
+    const focusTargets = filteredOpportunityTargets.length > 0 ? filteredOpportunityTargets : opportunityTargets;
+    if (focusTargets.length === 0) return null;
+
+    const topTargets = focusTargets.slice(0, 3);
+    const precinctList = topTargets.map((target) => target.precinct).join(', ');
+    const primaryAction = topTargets[0].actionCategory;
+
+    return {
+      precinctList,
+      primaryAction,
+      topTargets,
+      summary: `Focus on ${precinctList}. These precincts are the strongest opportunities based on turnout gaps, registration density, and recent trend changes.`,
+    };
+  }, [filteredOpportunityTargets, opportunityTargets]);
 
   const scenarioProjection = useMemo(() => {
     const rows = filteredStats.map((s) => {
@@ -2020,6 +2062,146 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500">What do you want to do today?</p>
+                    <h3 className="mt-1 text-xl font-bold text-gray-900">Choose a starting goal</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      {
+                        id: 'priority',
+                        label: 'Find priority precincts',
+                        description: 'Start with the strongest turnout and registration opportunities.',
+                      },
+                      {
+                        id: 'lift',
+                        label: 'Estimate turnout lift',
+                        description: 'Model turnout gains and evaluate the likely ballot increase.',
+                      },
+                      {
+                        id: 'brief',
+                        label: 'Export a field brief',
+                        description: 'Focus on one precinct and prepare a shareable summary.',
+                      },
+                    ].map((goal) => (
+                      <button
+                        key={goal.id}
+                        type="button"
+                        onClick={() => {
+                          hasUserChosenDashboardGoal.current = true;
+                          setDashboardGoal(goal.id as 'priority' | 'lift' | 'brief');
+                        }}
+                        className={cn(
+                          'rounded-xl border px-4 py-3 text-left transition-all',
+                          dashboardGoal === goal.id
+                            ? 'border-blue-600 bg-blue-50 shadow-sm'
+                            : 'border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50/40'
+                        )}
+                      >
+                        <div className="text-sm font-semibold text-gray-900">{goal.label}</div>
+                        <div className="mt-1 text-xs text-gray-500">{goal.description}</div>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        hasUserChosenDashboardGoal.current = true;
+                        setDashboardGoal('priority');
+                        setSelectedPrecinct('ALL');
+                        setOpportunityActionFilter('ALL');
+                        setScenarioTurnoutLiftPct(5);
+                      }}
+                      className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition-all hover:border-gray-300 hover:bg-gray-100"
+                    >
+                      Reset to overview
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrecinct(recommendedFocus?.topTargets[0]?.precinct ?? 'ALL')}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Focus first precinct
+                </button>
+                <button
+                  type="button"
+                  onClick={exportOpportunityTargetsCsv}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                >
+                  Export target list
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-500">How to use this dashboard</p>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-xl border border-blue-100 bg-white p-4">
+                    <p className="text-sm font-bold text-gray-900">Start with priority</p>
+                    <p className="mt-2 text-sm text-gray-600">Use the ranked precinct list to identify where turnout and registration gaps are most likely to matter.</p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-100 bg-white p-4">
+                    <p className="text-sm font-bold text-gray-900">Check likely turnout lift</p>
+                    <p className="mt-2 text-sm text-gray-600">Adjust the scenario slider to estimate a realistic ballot increase for the current filter.</p>
+                  </div>
+                  <div className="rounded-xl border border-amber-100 bg-white p-4">
+                    <p className="text-sm font-bold text-gray-900">Share the result</p>
+                    <p className="mt-2 text-sm text-gray-600">Export a target list or field packet when you are ready to brief volunteers, organizers, or leadership.</p>
+                  </div>
+                </div>
+              </div>
+
+              {recommendedFocus && (
+                <div className="grid grid-cols-1 xl:grid-cols-[1.35fr_0.65fr] gap-4">
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-6 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Recommended next step</p>
+                    <h3 className="mt-2 text-2xl font-bold text-blue-900">
+                      Focus on {recommendedFocus.precinctList}
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-blue-900/80">
+                      {recommendedFocus.summary}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        onClick={() => setSelectedPrecinct(recommendedFocus.topTargets[0].precinct)}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                      >
+                        Focus first precinct
+                      </button>
+                      <button
+                        onClick={exportOpportunityTargetsCsv}
+                        className="rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      >
+                        View target list
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Quick view</p>
+                    <div className="mt-4 space-y-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Priority action</p>
+                        <p className="text-lg font-bold text-gray-900">{recommendedFocus.primaryAction}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Top opportunity</p>
+                        <p className="text-lg font-bold text-gray-900">{recommendedFocus.topTargets[0].precinct}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Estimated lift</p>
+                        <p className="text-lg font-bold text-emerald-700">+{Math.round(scenarioProjection.additionalBallots).toLocaleString()} ballots</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Summary Stats */}
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <StatCard 
@@ -2056,7 +2238,7 @@ export default function App() {
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-lg font-bold text-gray-900">Trend Signals ({selectedYear} vs {selectedYear - 1})</h3>
                   <div className="text-sm font-medium text-gray-600">
                     County Turnout Δ: <span className="font-bold text-gray-900">{formatDeltaPoints(countyTurnoutDeltaYoY)}</span>
@@ -2316,7 +2498,7 @@ export default function App() {
                 )}
 
                 <div className="flex justify-end">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center justify-end gap-3">
                     <button
                       onClick={() => { void copyScenarioAssumptions(); }}
                       className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -2383,48 +2565,51 @@ export default function App() {
                       <option value="GOTV Chase">GOTV Chase</option>
                       <option value="Election Day Logistics">Election Day Logistics</option>
                     </select>
-                    <p className="text-xs text-gray-500">Weighted model: turnout gap 45%, registration mass 25%, CVAP gap 20%, recent decline 10%.</p>
-                    <button
-                      onClick={exportOpportunityTargetsCsv}
-                      disabled={filteredOpportunityTargets.length === 0 || isProcessing}
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
-                        filteredOpportunityTargets.length === 0 || isProcessing
-                          ? "bg-amber-100 text-amber-300 cursor-not-allowed"
-                          : "bg-amber-500 text-white hover:bg-amber-600"
-                      )}
-                    >
-                      Export Targets CSV
-                    </button>
-                    <button
-                      onClick={exportSelectedOpportunityTargetsCsv}
-                      disabled={selectedOpportunityTargets.length === 0 || isProcessing}
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
-                        selectedOpportunityTargets.length === 0 || isProcessing
-                          ? "bg-slate-100 text-slate-300 cursor-not-allowed"
-                          : "bg-slate-600 text-white hover:bg-slate-700"
-                      )}
-                    >
-                      Export Selected CSV
-                    </button>
-                    <button
-                      onClick={() => { void copySelectedTargetPrecincts(); }}
-                      disabled={selectedOpportunityTargets.length === 0}
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
-                        selectedOpportunityTargets.length === 0
-                          ? "bg-slate-100 text-slate-300 cursor-not-allowed"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      )}
-                    >
-                      Copy Selected Precincts
-                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-xs text-gray-500">Weighted model: turnout gap 45%, registration mass 25%, CVAP gap 20%, recent decline 10%.</p>
+                  <button
+                    onClick={exportOpportunityTargetsCsv}
+                    disabled={filteredOpportunityTargets.length === 0 || isProcessing}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                      filteredOpportunityTargets.length === 0 || isProcessing
+                        ? "bg-amber-100 text-amber-300 cursor-not-allowed"
+                        : "bg-amber-500 text-white hover:bg-amber-600"
+                    )}
+                  >
+                    Export Targets CSV
+                  </button>
+                  <button
+                    onClick={exportSelectedOpportunityTargetsCsv}
+                    disabled={selectedOpportunityTargets.length === 0 || isProcessing}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                      selectedOpportunityTargets.length === 0 || isProcessing
+                        ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                        : "bg-slate-600 text-white hover:bg-slate-700"
+                    )}
+                  >
+                    Export Selected CSV
+                  </button>
+                  <button
+                    onClick={() => { void copySelectedTargetPrecincts(); }}
+                    disabled={selectedOpportunityTargets.length === 0}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+                      selectedOpportunityTargets.length === 0
+                        ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    )}
+                  >
+                    Copy Selected Precincts
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                  <div className="flex flex-wrap items-center gap-3">
                     <span className="font-semibold">Selected targets: {selectedOpportunityTargets.length}</span>
                     <button
                       onClick={() => setSelectedOpportunityTargets(filteredOpportunityTargets.map((target) => target.precinct))}
@@ -2443,29 +2628,96 @@ export default function App() {
                   </div>
                 </div>
 
+                {filteredOpportunityTargets.length > 0 && (
+                  <div className="md:hidden sticky bottom-3 z-10">
+                    <div className="rounded-xl border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+                      <div className="flex items-center justify-between text-xs">
+                        <p className="font-semibold text-gray-700">Selected: {selectedOpportunityTargets.length}</p>
+                        <button
+                          onClick={() => setSelectedOpportunityTargets(filteredOpportunityTargets.map((target) => target.precinct))}
+                          disabled={filteredOpportunityTargets.length === 0}
+                          className="font-semibold text-blue-700 hover:text-blue-800 disabled:text-gray-400"
+                        >
+                          Select all
+                        </button>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <button
+                          onClick={exportSelectedOpportunityTargetsCsv}
+                          disabled={selectedOpportunityTargets.length === 0 || isProcessing}
+                          className={cn(
+                            "px-3 py-2 rounded-md text-xs font-semibold transition-colors",
+                            selectedOpportunityTargets.length === 0 || isProcessing
+                              ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                              : "bg-slate-600 text-white hover:bg-slate-700"
+                          )}
+                        >
+                          Export Selected
+                        </button>
+                        <button
+                          onClick={() => { void copySelectedTargetPrecincts(); }}
+                          disabled={selectedOpportunityTargets.length === 0}
+                          className={cn(
+                            "px-3 py-2 rounded-md text-xs font-semibold transition-colors",
+                            selectedOpportunityTargets.length === 0
+                              ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          )}
+                        >
+                          Copy Selected
+                        </button>
+                        <button
+                          onClick={() => setSelectedOpportunityTargets([])}
+                          disabled={selectedOpportunityTargets.length === 0}
+                          className="px-3 py-2 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:text-gray-400"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={exportOpportunityTargetsCsv}
+                          disabled={filteredOpportunityTargets.length === 0 || isProcessing}
+                          className={cn(
+                            "px-3 py-2 rounded-md text-xs font-semibold transition-colors",
+                            filteredOpportunityTargets.length === 0 || isProcessing
+                              ? "bg-amber-100 text-amber-300 cursor-not-allowed"
+                              : "bg-amber-500 text-white hover:bg-amber-600"
+                          )}
+                        >
+                          Export All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {scenarioNotice && (
+                  <div
+                    role="status"
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-xs font-medium",
+                      scenarioNotice.type === 'success'
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-red-200 bg-red-50 text-red-800"
+                    )}
+                  >
+                    {scenarioNotice.message}
+                  </div>
+                )}
+
                 {filteredOpportunityTargets.length === 0 ? (
                   <p className="text-sm text-gray-500">No opportunity targets are available for the selected year and filter.</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Select</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Rank</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Precinct</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Score</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Recommended Action</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Turnout Gap</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. Mass</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">CVAP Gap</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Decline</th>
-                          <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredOpportunityTargets.map((target) => (
-                          <tr key={`target-${target.precinct}`} className="hover:bg-gray-50">
-                            <td className="px-4 py-3">
+                  <div className="space-y-3">
+                    <div className="space-y-3 md:hidden">
+                      {filteredOpportunityTargets.map((target) => (
+                        <div key={`target-card-${target.precinct}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Rank {target.rank}</p>
+                              <p className="mt-1 text-base font-bold text-gray-900">{target.precinct}</p>
+                              <p className="mt-1 text-xs font-semibold text-gray-600">{target.actionCategory}</p>
+                            </div>
+                            <label className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700">
                               <input
                                 type="checkbox"
                                 aria-label={`Select target ${target.precinct}`}
@@ -2478,27 +2730,98 @@ export default function App() {
                                   }
                                 }}
                               />
-                            </td>
-                            <td className="px-4 py-3 text-sm font-bold text-gray-800">{target.rank}</td>
-                            <td className="px-4 py-3 text-sm font-semibold text-gray-900">{target.precinct}</td>
-                            <td className="px-4 py-3 text-sm text-gray-800">{(target.score * 100).toFixed(1)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{target.actionCategory}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{(target.turnoutGap * 100).toFixed(0)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{(target.registrationMass * 100).toFixed(0)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{(target.cvapGap * 100).toFixed(0)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{(target.recentDecline * 100).toFixed(0)}</td>
-                            <td className="px-4 py-3">
-                              <button
-                                onClick={() => setSelectedPrecinct(target.precinct)}
-                                className="px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100"
-                              >
-                                Focus Precinct
-                              </button>
-                            </td>
+                              Select
+                            </label>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5">
+                              <p className="font-semibold text-gray-500">Score</p>
+                              <p className="mt-0.5 font-bold text-gray-900">{(target.score * 100).toFixed(1)}</p>
+                            </div>
+                            <div className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5">
+                              <p className="font-semibold text-gray-500">Turnout Gap</p>
+                              <p className="mt-0.5 font-bold text-gray-900">{(target.turnoutGap * 100).toFixed(0)}</p>
+                            </div>
+                            <div className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5">
+                              <p className="font-semibold text-gray-500">Reg. Mass</p>
+                              <p className="mt-0.5 font-bold text-gray-900">{(target.registrationMass * 100).toFixed(0)}</p>
+                            </div>
+                            <div className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5">
+                              <p className="font-semibold text-gray-500">CVAP Gap</p>
+                              <p className="mt-0.5 font-bold text-gray-900">{(target.cvapGap * 100).toFixed(0)}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs">
+                            <p className="font-semibold text-gray-500">Recent Decline</p>
+                            <p className="mt-0.5 font-bold text-gray-900">{(target.recentDecline * 100).toFixed(0)}</p>
+                          </div>
+
+                          <button
+                            onClick={() => setSelectedPrecinct(target.precinct)}
+                            className="mt-3 w-full px-3 py-2 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          >
+                            Focus Precinct
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Select</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Rank</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Precinct</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Score</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Recommended Action</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Turnout Gap</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Reg. Mass</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">CVAP Gap</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Recent Decline</th>
+                            <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {filteredOpportunityTargets.map((target) => (
+                            <tr key={`target-${target.precinct}`} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select target ${target.precinct}`}
+                                  checked={selectedOpportunityTargets.includes(target.precinct)}
+                                  onChange={(event) => {
+                                    if (event.target.checked) {
+                                      setSelectedOpportunityTargets((previous) => Array.from(new Set([...previous, target.precinct])));
+                                    } else {
+                                      setSelectedOpportunityTargets((previous) => previous.filter((precinct) => precinct !== target.precinct));
+                                    }
+                                  }}
+                                />
+                              </td>
+                              <td className="px-4 py-3 text-sm font-bold text-gray-800">{target.rank}</td>
+                              <td className="px-4 py-3 text-sm font-semibold text-gray-900">{target.precinct}</td>
+                              <td className="px-4 py-3 text-sm text-gray-800">{(target.score * 100).toFixed(1)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{target.actionCategory}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{(target.turnoutGap * 100).toFixed(0)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{(target.registrationMass * 100).toFixed(0)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{(target.cvapGap * 100).toFixed(0)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700">{(target.recentDecline * 100).toFixed(0)}</td>
+                              <td className="px-4 py-3">
+                                <button
+                                  onClick={() => setSelectedPrecinct(target.precinct)}
+                                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                >
+                                  Focus Precinct
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2550,62 +2873,64 @@ export default function App() {
                       <>
                         {filteredStats[0] && (
                           <div className="space-y-6">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-start justify-between gap-3">
                               <div>
                                 <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Precinct {filteredStats[0].precinct}</p>
                                 <h4 className="text-2xl font-bold text-gray-900">{filteredStats[0].turnoutOverall.toFixed(2)}% Turnout</h4>
                               </div>
-                              <button 
-                                onClick={() => {
-                                  const s = filteredStats[0];
-                                  const data = [
-                                    { Metric: 'Year', Value: s.year },
-                                    { Metric: 'Precinct', Value: s.precinct },
-                                    { Metric: 'Trend', Value: s.trendLabel },
-                                    { Metric: 'CVAP', Value: s.cvapTotal || '' },
-                                    { Metric: 'Total Registered', Value: s.totalReg },
-                                    { Metric: 'Registered / CVAP %', Value: s.cvapTotal > 0 ? s.registrationShareOfCvap.toFixed(2) : '' },
-                                    { Metric: 'Registered / CVAP Δ YoY (pts)', Value: s.registrationShareOfCvapDeltaYoY !== null ? s.registrationShareOfCvapDeltaYoY.toFixed(2) : '' },
-                                    { Metric: 'Total Ballots Cast', Value: s.totalBallots },
-                                    { Metric: 'Overall Turnout %', Value: s.turnoutOverall.toFixed(2) },
-                                    { Metric: 'Turnout Δ YoY (pts)', Value: s.turnoutDeltaYoY !== null ? s.turnoutDeltaYoY.toFixed(2) : '' },
-                                    { Metric: 'Ballots / CVAP %', Value: s.cvapTotal > 0 ? s.ballotShareOfCvap.toFixed(2) : '' },
-                                    { Metric: 'Ballots / CVAP Δ YoY (pts)', Value: s.ballotShareOfCvapDeltaYoY !== null ? s.ballotShareOfCvapDeltaYoY.toFixed(2) : '' },
-                                    ...RACE_CODES.map(r => ({ Metric: `Reg Race ${r}`, Value: s.regByRace[r] || 0 })),
-                                    ...PARTY_CODES.map(p => ({ Metric: `Reg Party ${p}`, Value: s.regByParty[p] || 0 })),
-                                    ...GENDER_CODES.map(g => ({ Metric: `Reg Gender ${g}`, Value: s.regByGender[g] || 0 })),
-                                    ...RACE_CODES.map(r => ({ Metric: `Turnout Race ${r} %`, Value: (s.turnoutByRace[r] || 0).toFixed(2) })),
-                                    ...PARTY_CODES.map(p => ({ Metric: `Turnout Party ${p} %`, Value: (s.turnoutByParty[p] || 0).toFixed(2) })),
-                                    ...RACE_CODES.map(r => ({ Metric: `Density Race ${r} %`, Value: (s.densityByRace[r] || 0).toFixed(2) })),
-                                  ];
-                                  exportCsvFile(data, `Precinct_${s.precinct}_${s.year}_Stats.csv`);
-                                }}
-                                disabled={isProcessing}
-                                className={cn(
-                                  "p-2 rounded-lg transition-all shadow-sm flex items-center gap-2 text-xs font-bold",
-                                  isProcessing
-                                    ? "bg-blue-100 text-blue-300 cursor-not-allowed"
-                                    : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
-                                )}
-                                title="Export Precinct CSV"
-                              >
-                                <Download size={16} />
-                                Export CSV
-                              </button>
-                              <button
-                                onClick={exportFocusedFieldPacketCsv}
-                                disabled={isProcessing}
-                                className={cn(
-                                  "p-2 rounded-lg transition-all shadow-sm flex items-center gap-2 text-xs font-bold",
-                                  isProcessing
-                                    ? "bg-slate-100 text-slate-300 cursor-not-allowed"
-                                    : "bg-slate-100 text-slate-700 hover:bg-slate-700 hover:text-white"
-                                )}
-                                title="Export Focused Field Packet"
-                              >
-                                <FileDown size={16} />
-                                Export Field Packet
-                              </button>
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <button 
+                                  onClick={() => {
+                                    const s = filteredStats[0];
+                                    const data = [
+                                      { Metric: 'Year', Value: s.year },
+                                      { Metric: 'Precinct', Value: s.precinct },
+                                      { Metric: 'Trend', Value: s.trendLabel },
+                                      { Metric: 'CVAP', Value: s.cvapTotal || '' },
+                                      { Metric: 'Total Registered', Value: s.totalReg },
+                                      { Metric: 'Registered / CVAP %', Value: s.cvapTotal > 0 ? s.registrationShareOfCvap.toFixed(2) : '' },
+                                      { Metric: 'Registered / CVAP Δ YoY (pts)', Value: s.registrationShareOfCvapDeltaYoY !== null ? s.registrationShareOfCvapDeltaYoY.toFixed(2) : '' },
+                                      { Metric: 'Total Ballots Cast', Value: s.totalBallots },
+                                      { Metric: 'Overall Turnout %', Value: s.turnoutOverall.toFixed(2) },
+                                      { Metric: 'Turnout Δ YoY (pts)', Value: s.turnoutDeltaYoY !== null ? s.turnoutDeltaYoY.toFixed(2) : '' },
+                                      { Metric: 'Ballots / CVAP %', Value: s.cvapTotal > 0 ? s.ballotShareOfCvap.toFixed(2) : '' },
+                                      { Metric: 'Ballots / CVAP Δ YoY (pts)', Value: s.ballotShareOfCvapDeltaYoY !== null ? s.ballotShareOfCvapDeltaYoY.toFixed(2) : '' },
+                                      ...RACE_CODES.map(r => ({ Metric: `Reg Race ${r}`, Value: s.regByRace[r] || 0 })),
+                                      ...PARTY_CODES.map(p => ({ Metric: `Reg Party ${p}`, Value: s.regByParty[p] || 0 })),
+                                      ...GENDER_CODES.map(g => ({ Metric: `Reg Gender ${g}`, Value: s.regByGender[g] || 0 })),
+                                      ...RACE_CODES.map(r => ({ Metric: `Turnout Race ${r} %`, Value: (s.turnoutByRace[r] || 0).toFixed(2) })),
+                                      ...PARTY_CODES.map(p => ({ Metric: `Turnout Party ${p} %`, Value: (s.turnoutByParty[p] || 0).toFixed(2) })),
+                                      ...RACE_CODES.map(r => ({ Metric: `Density Race ${r} %`, Value: (s.densityByRace[r] || 0).toFixed(2) })),
+                                    ];
+                                    exportCsvFile(data, `Precinct_${s.precinct}_${s.year}_Stats.csv`);
+                                  }}
+                                  disabled={isProcessing}
+                                  className={cn(
+                                    "p-2 rounded-lg transition-all shadow-sm flex items-center gap-2 text-xs font-bold",
+                                    isProcessing
+                                      ? "bg-blue-100 text-blue-300 cursor-not-allowed"
+                                      : "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
+                                  )}
+                                  title="Export Precinct CSV"
+                                >
+                                  <Download size={16} />
+                                  Export CSV
+                                </button>
+                                <button
+                                  onClick={exportFocusedFieldPacketCsv}
+                                  disabled={isProcessing}
+                                  className={cn(
+                                    "p-2 rounded-lg transition-all shadow-sm flex items-center gap-2 text-xs font-bold",
+                                    isProcessing
+                                      ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                                      : "bg-slate-100 text-slate-700 hover:bg-slate-700 hover:text-white"
+                                  )}
+                                  title="Export Focused Field Packet"
+                                >
+                                  <FileDown size={16} />
+                                  Export Field Packet
+                                </button>
+                              </div>
                             </div>
 
                             <div className="space-y-4">

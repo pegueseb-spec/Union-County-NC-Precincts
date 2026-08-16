@@ -59,6 +59,22 @@ Planned post-beta direction:
 - Includes a tiered community glossary (volunteer, organizer, analyst definitions + organizing relevance)
 - Exports the filtered dashboard view as CSV
 
+## Dashboard Quick Start (Field-Friendly)
+
+For the fastest workflow during canvassing prep or huddles:
+
+1. Open Dashboard and choose a starting goal (priority precincts, turnout lift, or field brief).
+2. Use Recommended Next Step to focus the top precinct and validate the immediate action lane.
+3. Review Trend Signals and Opportunity Targets to confirm whether the focus is registration, persuasion, GOTV chase, or logistics.
+4. Adjust Scenario Planner turnout lift to model realistic conservative/base/aggressive outcomes.
+5. Export what your team needs:
+   - `Export Targets CSV` for assignment lists
+   - `Export Field Packet` for precinct-specific briefing
+   - `Export Planning Bundle CSV` for leadership summary
+
+Behavior note:
+- Dashboard guidance and layout updates are UX-only and do not change score formulas, turnout calculations, or export math.
+
 ## Data Source Verification
 
 The dashboard includes a Data Quality and Provenance panel with a Source Verification Ledger to help teams evaluate trust in the inputs before acting.

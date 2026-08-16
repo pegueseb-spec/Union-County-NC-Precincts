@@ -21,7 +21,7 @@ if ($Years -and $Years.Count -gt 0) {
   }
 }
 
-function Download-WithRetry([string]$url, [string]$outFile, [int]$maxAttempts = 4, [int]$timeoutSec = 180) {
+function Invoke-DownloadWithRetry([string]$url, [string]$outFile, [int]$maxAttempts = 4, [int]$timeoutSec = 180) {
   for ($attempt = 1; $attempt -le $maxAttempts; $attempt += 1) {
     try {
       Invoke-WebRequest -Uri $url -OutFile $outFile -TimeoutSec $timeoutSec
@@ -57,7 +57,7 @@ function Get-OfficialCountyTotal([string]$filePath, [string]$countyName) {
     }
 
     $total = 0.0
-    while (($line = $reader.ReadLine()) -ne $null) {
+    while ($null -ne ($line = $reader.ReadLine())) {
       if ([string]::IsNullOrWhiteSpace($line)) {
         continue
       }
@@ -112,9 +112,9 @@ foreach ($election in $elections) {
   $historyZip = Join-Path $workDir "history_stats_$($election.Stamp).zip"
 
   Write-Host "  - Downloading voter stats zip"
-  Download-WithRetry -url "$baseUrl/voter_stats_$($election.Stamp).zip" -outFile $voterZip
+  Invoke-DownloadWithRetry -url "$baseUrl/voter_stats_$($election.Stamp).zip" -outFile $voterZip
   Write-Host "  - Downloading history stats zip"
-  Download-WithRetry -url "$baseUrl/history_stats_$($election.Stamp).zip" -outFile $historyZip
+  Invoke-DownloadWithRetry -url "$baseUrl/history_stats_$($election.Stamp).zip" -outFile $historyZip
 
   $voterExtract = Join-Path $workDir 'voter'
   $historyExtract = Join-Path $workDir 'history'

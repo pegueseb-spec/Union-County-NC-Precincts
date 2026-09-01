@@ -130,3 +130,33 @@ Manual GitHub Actions runs required:
 2. Run workflow `Health Check` with input `verify_scope=full`.
 3. Run workflow `Security`.
 4. Record both run links in this log under Notes (or RELEASE.md) for release evidence.
+
+## 8) Post-PR #20 Validation and Security Remediation
+
+Merge event:
+- PR #20 merged to main.
+- Merge commit on main: `cd00161`.
+
+Initial post-merge checks:
+- npm run lint: PASS
+- npm run test:run: PASS (12/12)
+
+Preflight follow-up finding:
+- `npm run release:preflight` completed functional checks but surfaced 1 high severity production advisory in `browserslist <=4.28.6`.
+- Advisory references:
+  - GHSA-c83g-rgw3-j3cx
+  - GHSA-73wf-gq98-2v4g
+
+Remediation applied:
+- Ran `npm audit fix`.
+- Package lock and dependency tree updated automatically by npm.
+
+Post-remediation verification:
+- npm run lint: PASS
+- npm run test:run: PASS (12/12)
+- npm run build: PASS
+- npm run audit:prod: PASS (0 vulnerabilities)
+
+Final status after PR #20:
+- No known production vulnerabilities detected by npm audit.
+- Main branch is functionally healthy and security check is locally green.

@@ -25,6 +25,7 @@ import { BUILT_IN_DATA_METADATA } from './data/unionCountyBuiltInData';
 import { computeOpportunityScores, getTopQuartileOpportunityScores } from './lib/opportunityScoring';
 import { CVAPRecord, HistoryRecord, PrecinctStats, VoterRecord } from './types';
 import { LicenseAcceptanceModal } from './components/LicenseAcceptanceModal';
+import { BetaWelcomeModal } from './components/BetaWelcomeModal';
 
 const ChoroplethMap = lazy(async () => {
   const module = await import('./components/ChoroplethMap');
@@ -423,6 +424,7 @@ export default function App() {
   const [licenseAccepted, setLicenseAccepted] = useState<boolean>(() => {
     return getStoredString(STORAGE_KEYS.licenseAccepted, '') === 'true';
   });
+  const [showBetaWelcome, setShowBetaWelcome] = useState(false);
 
   // --- Data Processing ---
 
@@ -1770,8 +1772,12 @@ export default function App() {
           onAccept={() => {
             window.localStorage.setItem(STORAGE_KEYS.licenseAccepted, 'true');
             setLicenseAccepted(true);
+            setShowBetaWelcome(true);
           }}
         />
+      )}
+      {licenseAccepted && showBetaWelcome && (
+        <BetaWelcomeModal onDismiss={() => setShowBetaWelcome(false)} />
       )}
       {licenseAccepted && (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">

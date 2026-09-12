@@ -27,7 +27,8 @@ Use this checklist before sharing the app with users.
 - If `gh` is unavailable, `release:postdeploy` uses GitHub API fallback. Set `GITHUB_TOKEN` or `GH_TOKEN` to avoid API rate limits.
 - Verify upload validation rejects non-CSV/TXT files and oversized files.
 - Verify the app shell still loads correctly with the CSP defined in `index.html`.
-- Verify `.github/workflows/security.yml` is enabled and running successfully on the default branch.
+- Verify `.github/workflows/security.yml` is enabled and succeeds for dependency review and `npm run audit:prod` on the default branch.
+- Verify GitHub Default Setup CodeQL is still reporting under GitHub > Security > Code scanning or the `github-code-scanning/codeql` Actions run.
 - Verify Dependabot is enabled for npm and GitHub Actions updates.
 - Review `SECURITY.md` whenever reporting or maintainer contacts change.
 

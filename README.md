@@ -142,11 +142,16 @@ Prerequisites: Node.js 20+
    `npm run test:run`
 3. Build the production bundle:
    `npm run build`
-4. Verify bundled election totals against official NCSBE ENRS files:
+4. Audit production dependencies:
+   `npm run audit:prod`
+5. Confirm GitHub Default Setup CodeQL is still active:
+   - GitHub > Security > Code scanning should show recent CodeQL results for the default branch
+   - GitHub Actions should show the default CodeQL run under `github-code-scanning/codeql` instead of a custom job in `.github/workflows/security.yml`
+6. Verify bundled election totals against official NCSBE ENRS files:
    `npm run data:verify`
-5. Run the end-to-end share readiness preflight:
+7. Run the end-to-end share readiness preflight:
    `npm run release:preflight`
-6. After deploy, open the hosted app and print the latest deploy run details:
+8. After deploy, open the hosted app and print the latest deploy run details:
    `npm run release:postdeploy`
    - Uses `gh` when available
    - Falls back to GitHub API when `gh` is not installed
@@ -177,7 +182,7 @@ The detailed usage and interpretation tutorial is available in `TUTORIAL.md`.
 ## Security
 
 - Vulnerability handling and disclosure guidance: `SECURITY.md`
-- CI security automation includes dependency review, scheduled npm audit checks, and CodeQL analysis via GitHub Actions
+- CI security automation includes dependency review, scheduled npm audit checks, and GitHub Default Setup CodeQL scanning
 
 ## Data Inputs
 
